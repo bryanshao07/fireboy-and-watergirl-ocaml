@@ -52,6 +52,18 @@ let fireboy_walk = lazy (Sprite.load_anim [ "data/fb_idle0.png" ] 8.0)
 let fireboy_idle =
   lazy (Sprite.load_anim [ "data/fb_idle0.png"; "data/fb_idle1.png" ] 8.0)
 
+let sprite_paths_of_tile (t : tile) : string list =
+  match t with
+  | Water -> [ "data/water0.png"; "data/water1.png" ]
+  | _ -> []
+
+let water_anim = lazy (Sprite.load_anim (sprite_paths_of_tile Water) 4.0)
+
+let sprite_of_tile (timer : float) (t : tile) : Graphics.image option =
+  match t with
+  | Water -> Some (Sprite.frame_of (Lazy.force water_anim) timer)
+  | _ -> None
+
 (* pick anim based on player state *)
 let anim_of (p : Player.player) =
   if Float.abs p.vx > 1.0 then fireboy_walk (* walking *) else fireboy_idle
@@ -79,14 +91,19 @@ let color_of_tile (t : tile) : Graphics.color =
   | SpawnFire -> Graphics.rgb 255 180 180
   | SpawnWater -> Graphics.rgb 180 180 255
 
-let draw_tile rp x y tile =
+let draw_tile rp timer x y tile =
   let rect = tile_rect rp x y in
-  Graphics.set_color (color_of_tile tile);
-  Graphics.fill_rect rect.sx rect.sy rect.sw rect.sh;
+  (match sprite_of_tile timer tile with
+  | Some img ->
+      let img = Sprite.scale_image img rect.sw rect.sh in
+      Graphics.draw_image img rect.sx rect.sy
+  | None ->
+      Graphics.set_color (color_of_tile tile);
+      Graphics.fill_rect rect.sx rect.sy rect.sw rect.sh);
   Graphics.set_color Graphics.black;
   Graphics.draw_rect rect.sx rect.sy rect.sw rect.sh
 
-let draw_level rp lvl : unit =
+let draw_level rp timer lvl : unit =
   for row = 0 to lvl.height - 1 do
     for col = 0 to lvl.width - 1 do
       let tile = lvl.grid.(row).(col) in
@@ -94,6 +111,6 @@ let draw_level rp lvl : unit =
       (* flip y so row 0 appears at top of screen *)
       let screen_y = lvl.height - 1 - row in
 
-      draw_tile rp col screen_y tile
+      draw_tile rp timer col screen_y tile
     done
   done

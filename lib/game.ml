@@ -117,6 +117,6 @@ let tick (dt : float) (s : t) (fb_keys : Input.keys) (wg_keys : Input.keys) : t
 let render (s : t) : unit =
   (* draw background first *)
   let rp = Render.compute_render_params s.level in
-  Render.draw_level rp s.level;
+  Render.draw_level rp s.fireboy.anim_timer s.level;
   Render.draw_player rp s.fireboy;
   Render.draw_player rp s.watergirl

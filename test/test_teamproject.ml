@@ -49,7 +49,8 @@ let test_init _ =
 
 let test_fireboy_spawn_uses_player_lower_left _ =
   let x, y = Game.fireboy_spawn_of spawn_level in
-  assert_equal 35. x ~printer:string_of_float;
+  let expected_x = 30. +. ((30. -. Player.player_width) /. 2.) in
+  assert_equal expected_x x ~printer:string_of_float;
   assert_equal 30. y ~printer:string_of_float
 
 let test_fireboy_dies_in_water _ =
@@ -112,8 +113,15 @@ let test_player_rect_uses_lower_left_and_scaled_size _ =
   let rect = Render.player_rect rp p in
   assert_equal 80 rect.sx ~printer:string_of_int;
   assert_equal 80 rect.sy ~printer:string_of_int;
-  assert_equal 40 rect.sw ~printer:string_of_int;
-  assert_equal 60 rect.sh ~printer:string_of_int
+  assert_equal (Render.scaled_length rp Player.player_width) rect.sw
+    ~printer:string_of_int;
+  assert_equal (Render.scaled_length rp Player.player_height) rect.sh
+    ~printer:string_of_int
+
+let test_water_tile_uses_animation_sprites _ =
+  assert_equal
+    [ "data/water0.png"; "data/water1.png" ]
+    (Render.sprite_paths_of_tile Level.Water)
 
 let tests =
   "test suite" >::: [
@@ -130,6 +138,7 @@ let tests =
     "resetting triggers respawn" >:: test_resetting_triggers_respawn;
     "sprite rows keep png order" >:: test_sprite_rows_keep_png_order;
     "player rect scales"         >:: test_player_rect_uses_lower_left_and_scaled_size;
+    "water tile uses sprites"    >:: test_water_tile_uses_animation_sprites;
   ]
 
 let _ = run_test_tt_main tests
