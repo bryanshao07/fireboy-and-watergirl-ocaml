@@ -79,4 +79,4 @@ let update dt level (p : player) (k : keys) : player =
       else (upd_y, vy, false)
   in
 
-  { p with x; vx; y; vy; on_ground }
+  { p with x; vx; y; vy; on_ground; anim_timer = p.anim_timer +. dt }

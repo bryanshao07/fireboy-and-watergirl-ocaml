@@ -1,6 +1,6 @@
 (library
  (name teamproject)
- (libraries graphics)
+ (libraries graphics unix camlimages.core camlimages.png)
  (foreign_stubs
   (language c)
   (names x11_input)

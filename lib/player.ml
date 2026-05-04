@@ -10,7 +10,8 @@ type player = {
   on_ground : bool;
   character : character;
   alive : bool;
+  anim_timer : float;
 }
 
-let player_height = 30.
-let player_width = 20.
+let player_height = 45.
+let player_width = 30.

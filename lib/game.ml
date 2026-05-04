@@ -26,12 +26,22 @@ let tile_to_pixel_center (tx : int) (ty : int) (lvl : Level.t) : float * float =
   let py = float_of_int (height_px - (ty * tile_size) - (tile_size / 2)) in
   (px, py)
 
+let tile_to_player_lower_left (tx : int) (ty : int) (lvl : Level.t) :
+    float * float =
+  let px =
+    float_of_int (tx * tile_size)
+    +. ((float_of_int tile_size -. player_width) /. 2.)
+  in
+  let height_px = Level.height lvl * tile_size in
+  let py = float_of_int (height_px - ((ty + 1) * tile_size)) in
+  (px, py)
+
 let find_spawn (target : Level.tile) (lvl : Level.t) : float * float =
   let result = ref None in
   for y = 0 to Level.height lvl - 1 do
     for x = 0 to Level.width lvl - 1 do
       if Level.get lvl x y = target && !result = None then
-        result := Some (tile_to_pixel_center x y lvl)
+        result := Some (tile_to_player_lower_left x y lvl)
     done
   done;
   match !result with
@@ -53,6 +63,7 @@ let spawn_fireboy (x, y) : player =
     on_ground = false;
     character = Fireboy;
     alive = true;
+    anim_timer = 0.;
   }
 
 let spawn_watergirl (x, y) : player =
@@ -64,6 +75,7 @@ let spawn_watergirl (x, y) : player =
     on_ground = false;
     character = Watergirl;
     alive = true;
+    anim_timer = 0.;
   }
 
 let init (level : Level.t) : t =
@@ -103,7 +115,8 @@ let tick (dt : float) (s : t) (fb_keys : Input.keys) (wg_keys : Input.keys) : t
       else { s with fireboy = fb; watergirl = wg }
 
 let render (s : t) : unit =
-  Render.draw_level s.level;
   (* draw background first *)
-  Render.draw_player s.fireboy;
-  Render.draw_player s.watergirl
+  let rp = Render.compute_render_params s.level in
+  Render.draw_level rp s.level;
+  Render.draw_player rp s.fireboy;
+  Render.draw_player rp s.watergirl
