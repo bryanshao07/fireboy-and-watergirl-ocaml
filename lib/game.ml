@@ -1,14 +1,11 @@
 open Player
 
-
 let tile_size = 30
-
 let reset_delay = 0.5
-
 
 type status =
   | Playing
-  | Resetting of float 
+  | Resetting of float
 
 type t = {
   fireboy : player;
@@ -39,7 +36,7 @@ let find_spawn (target : Level.tile) (lvl : Level.t) : float * float =
   done;
   match !result with
   | Some pos -> pos
-  | None -> (100., 100.)  
+  | None -> (100., 100.)
 
 let fireboy_spawn_of (lvl : Level.t) : float * float =
   find_spawn Level.SpawnFire lvl
@@ -47,75 +44,66 @@ let fireboy_spawn_of (lvl : Level.t) : float * float =
 let watergirl_spawn_of (lvl : Level.t) : float * float =
   find_spawn Level.SpawnWater lvl
 
+let spawn_fireboy (x, y) : player =
+  {
+    x;
+    y;
+    vx = 0.;
+    vy = 0.;
+    on_ground = false;
+    character = Fireboy;
+    alive = true;
+  }
 
+let spawn_watergirl (x, y) : player =
+  {
+    x;
+    y;
+    vx = 0.;
+    vy = 0.;
+    on_ground = false;
+    character = Watergirl;
+    alive = true;
+  }
 
-let spawn_fireboy (x, y) : player = {
-  x; y;
-  vx = 0.;
-  vy = 0.;
-  on_ground = false;
-  character = Fireboy;
-  alive = true;
-}
-
-let spawn_watergirl (x, y) : player = {
-  x; y;
-  vx = 0.;
-  vy = 0.;
-  on_ground = false;
-  character = Watergirl;
-  alive = true;
-}
-
-
-let init (level : Level.t) : t = {
-  fireboy = spawn_fireboy (fireboy_spawn_of level);
-  watergirl = spawn_watergirl (watergirl_spawn_of level);
-  level;
-  status = Playing;
-}
-
+let init (level : Level.t) : t =
+  {
+    fireboy = spawn_fireboy (fireboy_spawn_of level);
+    watergirl = spawn_watergirl (watergirl_spawn_of level);
+    level;
+    status = Playing;
+  }
 
 let check_death (p : player) (level : Level.t) : player =
   let tx, ty = pixel_to_tile p.x p.y level in
   let tile = Level.get level tx ty in
   let dies =
-    match p.character, tile with
-    | Fireboy,   Level.Water -> true
-    | Watergirl, Level.Fire  -> true
-    | _,         Level.Acid  -> true
+    match (p.character, tile) with
+    | Fireboy, Level.Water -> true
+    | Watergirl, Level.Fire -> true
+    | _, Level.Acid -> true
     | _, _ -> false
   in
   if dies then { p with alive = false } else p
 
-
-
-let tick
-    (dt : float)
-    (s : t)
-    (fb_keys : Input.keys)
-    (wg_keys : Input.keys) : t =
+let tick (dt : float) (s : t) (fb_keys : Input.keys) (wg_keys : Input.keys) : t
+    =
   match s.status with
   | Resetting remaining ->
       let remaining' = remaining -. dt in
       if remaining' <= 0. then init s.level
       else { s with status = Resetting remaining' }
   | Playing ->
-      let fb = Physics.update dt s.fireboy fb_keys in
-      let wg = Physics.update dt s.watergirl wg_keys in
+      let fb = Physics.update dt s.level s.fireboy fb_keys in
+      let wg = Physics.update dt s.level s.watergirl wg_keys in
       let fb = check_death fb s.level in
       let wg = check_death wg s.level in
-      if not fb.alive || not wg.alive then
-        { s with
-          fireboy = fb;
-          watergirl = wg;
-          status = Resetting reset_delay;
-        }
-      else
-        { s with fireboy = fb; watergirl = wg }
-
+      if (not fb.alive) || not wg.alive then
+        { s with fireboy = fb; watergirl = wg; status = Resetting reset_delay }
+      else { s with fireboy = fb; watergirl = wg }
 
 let render (s : t) : unit =
-  Render.draw_level s.level;        (* draw background first *)
+  Render.draw_level s.level;
+  (* draw background first *)
   Render.draw_player s.fireboy;
-  Render.draw_player s.watergirl;
+  Render.draw_player s.watergirl

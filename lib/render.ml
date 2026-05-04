@@ -10,7 +10,9 @@ let draw_player (p : player) : unit =
     | Watergirl -> Graphics.blue
   in
   Graphics.set_color color;
-  Graphics.fill_rect (int_of_float p.x) (int_of_float p.y) 20 30
+  Graphics.fill_rect (int_of_float p.x) (int_of_float p.y)
+    (int_of_float player_width)
+    (int_of_float player_height)
 
 let color_of_tile (t : tile) : Graphics.color =
   match t with

@@ -24,5 +24,4 @@ demo-video-url: "https://www.youtube.com/watch?v=ZIYiZ3dJ86U"
 desc: >
   An OCaml implementation of the online video game Fireboy and Watergirl. 
   Two players guide a fire character and a water character through tile-based levels, 
-  collecting gems and avoiding element-specific hazards — Fireboy dies in water, Watergirl dies in fire, 
-  and both die in acid.
+  collecting gems and avoiding element-specific hazards — Fireboy dies in water, Watergirl dies in fire,  and both die in acid.

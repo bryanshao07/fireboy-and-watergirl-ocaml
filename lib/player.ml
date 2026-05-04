@@ -11,3 +11,6 @@ type player = {
   character : character;
   alive : bool;
 }
+
+let player_height = 30.
+let player_width = 20.

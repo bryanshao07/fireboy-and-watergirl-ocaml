@@ -54,9 +54,9 @@ let from_string_list rows =
   let grid =
     rows
     |> List.map (fun row ->
-           if String.length row <> width then
-             failwith "All rows must have the same width";
-           Array.init width (fun x -> tile_of_char row.[x]))
+        if String.length row <> width then
+          failwith "All rows must have the same width";
+        Array.init width (fun x -> tile_of_char row.[x]))
     |> Array.of_list
   in
   { grid; width; height }
@@ -65,36 +65,44 @@ let sample_level =
   from_string_list
     [
       "############################";
+      "#                          #";
+      "#                          #";
       "#        R        B      EE#";
       "#   #######   ###########QQ#";
       "#                          #";
+      "#                          #";
+      "#                          #";
       "#      ###########   ##### #";
       "#                          #";
+      "#                          #";
+      "#                          #";
       "#   FFFF########WWWW###    #";
+      "#   ###################    #";
+      "#                          #";
       "#                          #";
       "#   R#######   B#######    #";
+      "#   ########   ########    #";
+      "#                          #";
       "#                          #";
       "#   ##########       ###   #";
       "#                          #";
+      "#                          #";
+      "#                          #";
       "#    ###T###########       #";
+      "#    ###############       #";
+      "#                          #";
       "#                          #";
       "####AAAAA############      #";
+      "#####################      #";
       "#                          #";
-      "# 2         FFFF       1   #";
+      "#                          #";
+      "#                          #";
+      "# 1 2                      #";
+      "#######WWW#FFF##WW##########";
       "############################";
     ]
 
-    (* Levels
-  # = wall/platform
-  space = empty air
-  F = fire hazard
-  W = water hazard
-  A = acid/green hazard
-  R = red/fire diamond
-  B = blue/water diamond
-  T = button/switch
-  1 = Fireboy spawn
-  2 = Watergirl spawn
-  E = Fireboy exit
-  Q = Watergirl exit
-*)
+(* Levels # = wall/platform space = empty air F = fire hazard W = water hazard A
+   = acid/green hazard R = red/fire diamond B = blue/water diamond T =
+   button/switch 1 = Fireboy spawn 2 = Watergirl spawn E = Fireboy exit Q =
+   Watergirl exit *)
