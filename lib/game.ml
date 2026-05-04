@@ -87,7 +87,12 @@ let init (level : Level.t) : t =
   }
 
 let check_death (p : player) (level : Level.t) : player =
-  let tx, ty = pixel_to_tile p.x p.y level in
+  let tx, ty =
+    pixel_to_tile
+      (p.x +. (player_width /. 2.))
+      (p.y +. (player_height /. 2.))
+      level
+  in
   let tile = Level.get level tx ty in
   let dies =
     match (p.character, tile) with
@@ -115,8 +120,8 @@ let tick (dt : float) (s : t) (fb_keys : Input.keys) (wg_keys : Input.keys) : t
       else { s with fireboy = fb; watergirl = wg }
 
 let render (s : t) : unit =
-  (* draw background first *)
   let rp = Render.compute_render_params s.level in
+  Render.draw_background rp s.level;
   Render.draw_level rp s.fireboy.anim_timer s.level;
   Render.draw_player rp s.fireboy;
   Render.draw_player rp s.watergirl

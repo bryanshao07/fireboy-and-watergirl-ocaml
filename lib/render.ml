@@ -76,6 +76,28 @@ let draw_player (rp : render_params) (p : Player.player) : unit =
 
   Graphics.draw_image frame rect.sx rect.sy
 
+let background = lazy (Sprite.load_png "data/background.png")
+
+let crop_center img width height =
+  let rows = Graphics.dump_image img in
+  let img_h = Array.length rows in
+  let img_w = if img_h = 0 then 0 else Array.length rows.(0) in
+  let width = min width img_w in
+  let height = min height img_h in
+  let start_x = max 0 ((img_w - width) / 2) in
+  let start_y = max 0 ((img_h - height) / 2) in
+  Sprite.image_rows width height (fun x y -> rows.(start_y + y).(start_x + x))
+  |> Graphics.make_image
+
+let draw_background (rp : render_params) (lvl : Level.t) : unit =
+  Graphics.set_color Graphics.black;
+  Graphics.fill_rect 0 0 (Graphics.size_x ()) (Graphics.size_y ());
+  let img = Lazy.force background in
+  let w = lvl.width * rp.rts in
+  let h = lvl.height * rp.rts in
+  let img = crop_center img w h in
+  Graphics.draw_image img rp.offset_x rp.offset_y
+
 let color_of_tile (t : tile) : Graphics.color =
   match t with
   | Empty -> Graphics.white
@@ -93,15 +115,16 @@ let color_of_tile (t : tile) : Graphics.color =
 
 let draw_tile rp timer x y tile =
   let rect = tile_rect rp x y in
-  (match sprite_of_tile timer tile with
-  | Some img ->
-      let img = Sprite.scale_image img rect.sw rect.sh in
-      Graphics.draw_image img rect.sx rect.sy
-  | None ->
-      Graphics.set_color (color_of_tile tile);
-      Graphics.fill_rect rect.sx rect.sy rect.sw rect.sh);
-  Graphics.set_color Graphics.black;
-  Graphics.draw_rect rect.sx rect.sy rect.sw rect.sh
+  match tile with
+  | Empty -> ()
+  | _ -> (
+      match sprite_of_tile timer tile with
+      | Some img ->
+          let img = Sprite.scale_image img rect.sw rect.sh in
+          Graphics.draw_image img rect.sx rect.sy
+      | None ->
+          Graphics.set_color (color_of_tile tile);
+          Graphics.fill_rect rect.sx rect.sy rect.sw rect.sh)
 
 let draw_level rp timer lvl : unit =
   for row = 0 to lvl.height - 1 do
