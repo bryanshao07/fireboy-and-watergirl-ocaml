@@ -47,7 +47,10 @@ let tile_rect (rp : render_params) col screen_y : screen_rect =
     sh = rp.rts;
   }
 
-let fireboy_walk = lazy (Sprite.load_anim [ "data/fb_idle0.png" ] 8.0)
+let fireboy_walk_paths =
+  [ "data/fb_walk0.png"; "data/fb_walk1.png"; "data/fb_walk2.png" ]
+
+let fireboy_walk = lazy (Sprite.load_anim fireboy_walk_paths 8.0)
 
 let fireboy_idle =
   lazy (Sprite.load_anim [ "data/fb_idle0.png"; "data/fb_idle1.png" ] 8.0)
@@ -56,27 +59,36 @@ let sprite_paths_of_tile (t : tile) : string list =
   match t with
   | Fire -> [ "data/lava0.png"; "data/lava1.png" ]
   | Water -> [ "data/water0.png"; "data/water1.png" ]
+  | Acid -> [ "data/acid0.png"; "data/acid1.png" ]
   | Wall -> [ "data/wall.png" ]
   | Walltop -> [ "data/walltop.png" ]
   | DiamondFire -> [ "data/fire_gem.png" ]
   | DiamondWater -> [ "data/water_gem.png" ]
+  | ExitFire -> [ "data/fire_exit.png" ]
+  | ExitWater -> [ "data/water_exit.png" ]
   | _ -> []
 
 let lava_anim = lazy (Sprite.load_anim (sprite_paths_of_tile Fire) 4.0)
 let water_anim = lazy (Sprite.load_anim (sprite_paths_of_tile Water) 4.0)
+let acid_anim = lazy (Sprite.load_anim (sprite_paths_of_tile Acid) 4.0)
 let wall_anim = lazy (Sprite.load_anim (sprite_paths_of_tile Wall) 4.0)
 let walltop_anim = lazy (Sprite.load_anim (sprite_paths_of_tile Walltop) 4.0)
 let fire_gem_anim = lazy (Sprite.load_anim (sprite_paths_of_tile DiamondFire) 1.0)
 let water_gem_anim = lazy (Sprite.load_anim (sprite_paths_of_tile DiamondWater) 1.0)
+let fire_exit_anim = lazy (Sprite.load_anim (sprite_paths_of_tile ExitFire) 1.0)
+let water_exit_anim = lazy (Sprite.load_anim (sprite_paths_of_tile ExitWater) 1.0)
 
 let sprite_of_tile (timer : float) (t : tile) : Graphics.image option =
   match t with
   | Fire -> Some (Sprite.frame_of (Lazy.force lava_anim) timer)
   | Water -> Some (Sprite.frame_of (Lazy.force water_anim) timer)
+  | Acid -> Some (Sprite.frame_of (Lazy.force acid_anim) timer)
   | Wall -> Some (Sprite.frame_of (Lazy.force wall_anim) timer)
   | Walltop -> Some (Sprite.frame_of (Lazy.force walltop_anim) timer)
   | DiamondFire -> Some (Sprite.frame_of (Lazy.force fire_gem_anim) timer)
   | DiamondWater -> Some (Sprite.frame_of (Lazy.force water_gem_anim) timer)
+  | ExitFire -> Some (Sprite.frame_of (Lazy.force fire_exit_anim) timer)
+  | ExitWater -> Some (Sprite.frame_of (Lazy.force water_exit_anim) timer)
   | _ -> None
 
 let draws_over_player (t : tile) : bool =
@@ -91,6 +103,9 @@ let anim_of (p : Player.player) =
 let draw_player (rp : render_params) (p : Player.player) : unit =
   let anim = anim_of p in
   let frame = Sprite.frame_of (Lazy.force anim) p.anim_timer in
+  let frame =
+    if p.vx < -1.0 then Sprite.flip_image_horizontally frame else frame
+  in
   let rect = player_rect rp p in
   let frame = Sprite.scale_image frame rect.sw rect.sh in
 
@@ -161,3 +176,32 @@ let draw_foreground_tiles rp timer lvl : unit =
         draw_tile rp timer col screen_y tile
     done
   done
+
+let vignette = lazy (Sprite.load_png_rgba "data/vignette.png")
+
+let red c = (c lsr 16) land 0xff
+let green c = (c lsr 8) land 0xff
+let blue c = c land 0xff
+
+let blend_channel under over alpha =
+  ((under * (255 - alpha)) + (over * alpha)) / 255
+
+let blend_pixel under (over : Sprite.rgba_pixel) =
+  if over.a <= 0 then under
+  else if over.a >= 255 then Graphics.rgb over.r over.g over.b
+  else
+    Graphics.rgb
+      (blend_channel (red under) over.r over.a)
+      (blend_channel (green under) over.g over.a)
+      (blend_channel (blue under) over.b over.a)
+
+let draw_vignette () : unit =
+  let w = Graphics.size_x () in
+  let h = Graphics.size_y () in
+  let overlay = Sprite.scale_rgba (Lazy.force vignette) w h in
+  let screen = Graphics.get_image 0 0 w h |> Graphics.dump_image in
+  let blended =
+    Sprite.image_rows w h (fun x y -> blend_pixel screen.(y).(x) overlay.pixels.(y).(x))
+    |> Graphics.make_image
+  in
+  Graphics.draw_image blended 0 0

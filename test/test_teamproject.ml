@@ -107,6 +107,11 @@ let test_sprite_rows_keep_png_order _ =
   let rows = Sprite.image_rows 2 2 (fun x y -> (y * 10) + x) in
   assert_equal [| [| 0; 1 |]; [| 10; 11 |] |] rows
 
+let test_sprite_rows_flip_horizontally _ =
+  let rows = [| [| 1; 2; 3 |]; [| 4; 5; 6 |] |] in
+  assert_equal [| [| 3; 2; 1 |]; [| 6; 5; 4 |] |]
+    (Sprite.flip_rows_horizontally rows)
+
 let test_player_rect_uses_lower_left_and_scaled_size _ =
   let rp : Render.render_params = { rts = 60; offset_x = 10; offset_y = 20 } in
   let p = Game.spawn_fireboy (35., 30.) in
@@ -128,11 +133,27 @@ let test_lava_tile_uses_animation_sprites _ =
     [ "data/lava0.png"; "data/lava1.png" ]
     (Render.sprite_paths_of_tile Level.Fire)
 
+let test_acid_tile_uses_animation_sprites _ =
+  assert_equal
+    [ "data/acid0.png"; "data/acid1.png" ]
+    (Render.sprite_paths_of_tile Level.Acid)
+
 let test_gem_tiles_use_sprites _ =
   assert_equal [ "data/fire_gem.png" ]
     (Render.sprite_paths_of_tile Level.DiamondFire);
   assert_equal [ "data/water_gem.png" ]
     (Render.sprite_paths_of_tile Level.DiamondWater)
+
+let test_exit_tiles_use_sprites _ =
+  assert_equal [ "data/fire_exit.png" ]
+    (Render.sprite_paths_of_tile Level.ExitFire);
+  assert_equal [ "data/water_exit.png" ]
+    (Render.sprite_paths_of_tile Level.ExitWater)
+
+let test_fireboy_walk_uses_walk_sprites _ =
+  assert_equal
+    [ "data/fb_walk0.png"; "data/fb_walk1.png"; "data/fb_walk2.png" ]
+    Render.fireboy_walk_paths
 
 let test_hazard_tiles_draw_over_players _ =
   assert_bool "water draws over players" (Render.draws_over_player Level.Water);
@@ -154,10 +175,14 @@ let tests =
     "resetting counts down"      >:: test_resetting_counts_down;
     "resetting triggers respawn" >:: test_resetting_triggers_respawn;
     "sprite rows keep png order" >:: test_sprite_rows_keep_png_order;
+    "sprite rows flip"           >:: test_sprite_rows_flip_horizontally;
     "player rect scales"         >:: test_player_rect_uses_lower_left_and_scaled_size;
     "water tile uses sprites"    >:: test_water_tile_uses_animation_sprites;
     "lava tile uses sprites"     >:: test_lava_tile_uses_animation_sprites;
+    "acid tile uses sprites"     >:: test_acid_tile_uses_animation_sprites;
     "gem tiles use sprites"      >:: test_gem_tiles_use_sprites;
+    "exit tiles use sprites"     >:: test_exit_tiles_use_sprites;
+    "fireboy walk uses sprites"  >:: test_fireboy_walk_uses_walk_sprites;
     "hazards draw over players"  >:: test_hazard_tiles_draw_over_players;
   ]
 
