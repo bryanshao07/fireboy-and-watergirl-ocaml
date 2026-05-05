@@ -1,5 +1,10 @@
 open Teamproject
 
+type scene =
+  | Intro
+  | InGame of Game.t
+  | Win
+
 let () =
   let target_frame_time = 1. /. 60. in
   let max_dt = 1. /. 20. in
@@ -8,7 +13,7 @@ let () =
   Graphics.set_window_title "Fireboy & Watergirl";
   Graphics.auto_synchronize false;
 
-  let game = ref (Game.init Level.sample_level) in
+  let scene = ref Intro in
   let last_frame = ref (Unix.gettimeofday ()) in
   let running = ref true in
 
@@ -20,11 +25,23 @@ let () =
     Graphics.clear_graph ();
     Input.drain ();
 
-    let fb_keys = Input.poll_fireboy () in
-    let wg_keys = Input.poll_watergirl () in
-    game := Game.tick dt !game fb_keys wg_keys;
-
-    Game.render !game;
+    (match !scene with
+    | Intro ->
+        Render.draw_intro ();
+        if Input.confirm_just_pressed () then
+          scene := InGame (Game.init Level.sample_level)
+    | InGame game ->
+        let fb_keys = Input.poll_fireboy () in
+        let wg_keys = Input.poll_watergirl () in
+        let game' = Game.tick dt game fb_keys wg_keys in
+        Game.render game';
+        (match game'.Game.status with
+        | Game.Won -> scene := Win
+        | _ -> scene := InGame game')
+    | Win ->
+        Render.draw_win ();
+        if Input.confirm_just_pressed () then
+          scene := Intro);
 
     Graphics.synchronize ();
 

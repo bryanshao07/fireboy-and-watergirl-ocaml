@@ -6,6 +6,7 @@ let reset_delay = 0.5
 type status =
   | Playing
   | Resetting of float
+  | Won
 
 type t = {
   fireboy : player;
@@ -86,6 +87,15 @@ let init (level : Level.t) : t =
     status = Playing;
   }
 
+let check_win (fb : player) (wg : player) (level : Level.t) : bool =
+  let center_tile p =
+    pixel_to_tile (p.x +. (player_width /. 2.)) (p.y +. (player_height /. 2.)) level
+  in
+  let ftx, fty = center_tile fb in
+  let wtx, wty = center_tile wg in
+  Level.get level ftx fty = Level.ExitFire
+  && Level.get level wtx wty = Level.ExitWater
+
 let check_death (p : player) (level : Level.t) : player =
   let tx, ty =
     pixel_to_tile
@@ -106,6 +116,7 @@ let check_death (p : player) (level : Level.t) : player =
 let tick (dt : float) (s : t) (fb_keys : Input.keys) (wg_keys : Input.keys) : t
     =
   match s.status with
+  | Won -> s
   | Resetting remaining ->
       let remaining' = remaining -. dt in
       if remaining' <= 0. then init s.level
@@ -117,6 +128,8 @@ let tick (dt : float) (s : t) (fb_keys : Input.keys) (wg_keys : Input.keys) : t
       let wg = check_death wg s.level in
       if (not fb.alive) || not wg.alive then
         { s with fireboy = fb; watergirl = wg; status = Resetting reset_delay }
+      else if check_win fb wg s.level then
+        { s with fireboy = fb; watergirl = wg; status = Won }
       else { s with fireboy = fb; watergirl = wg }
 
 let render (s : t) : unit =

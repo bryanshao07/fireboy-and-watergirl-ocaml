@@ -12,9 +12,9 @@ Nhat Minh (Kevin) (nt428)
 1. Install XQuartz (required for the graphics library):
    - Download and run the `.pkg` from https://www.xquartz.org
    - Log out and back in after installing
-2. Install the graphics library:
+2. Install the graphics and image libraries:
    ```
-   opam install graphics
+   opam install graphics camlimages
    ```
 3. Build and run:
    ```
@@ -29,10 +29,10 @@ Nhat Minh (Kevin) (nt428)
      ```
      export DISPLAY=:0
      ```
-2. Install the graphics library inside WSL:
+2. Install the graphics and image libraries inside WSL:
    ```
    sudo apt install libx11-dev
-   opam install graphics
+   opam install graphics camlimages
    ```
 3. Build and run:
    ```
