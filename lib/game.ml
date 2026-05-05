@@ -13,6 +13,8 @@ type t = {
   watergirl : player;
   level : Level.t;
   status : status;
+  elapsed : float;
+  gems : int;
 }
 
 let pixel_to_tile (px : float) (py : float) (lvl : Level.t) : int * int =
@@ -85,6 +87,8 @@ let init (level : Level.t) : t =
     watergirl = spawn_watergirl (watergirl_spawn_of level);
     level;
     status = Playing;
+    elapsed = 0.;
+    gems = 0;
   }
 
 let check_win (fb : player) (wg : player) (level : Level.t) : bool =
@@ -126,11 +130,24 @@ let tick (dt : float) (s : t) (fb_keys : Input.keys) (wg_keys : Input.keys) : t
       let wg = Physics.update dt s.level s.watergirl wg_keys in
       let fb = check_death fb s.level in
       let wg = check_death wg s.level in
+      let elapsed' = s.elapsed +. dt in
       if (not fb.alive) || not wg.alive then
-        { s with fireboy = fb; watergirl = wg; status = Resetting reset_delay }
+        {
+          s with
+          fireboy = fb;
+          watergirl = wg;
+          status = Resetting reset_delay;
+          elapsed = elapsed';
+        }
       else if check_win fb wg s.level then
-        { s with fireboy = fb; watergirl = wg; status = Won }
-      else { s with fireboy = fb; watergirl = wg }
+        {
+          s with
+          fireboy = fb;
+          watergirl = wg;
+          status = Won;
+          elapsed = elapsed';
+        }
+      else { s with fireboy = fb; watergirl = wg; elapsed = elapsed' }
 
 let render (s : t) : unit =
   let rp = Render.compute_render_params s.level in
@@ -139,4 +156,5 @@ let render (s : t) : unit =
   Render.draw_player rp s.fireboy;
   Render.draw_player rp s.watergirl;
   Render.draw_foreground_tiles rp s.fireboy.anim_timer s.level;
-  Render.draw_vignette ()
+  Render.draw_vignette ();
+  Render.draw_hud s.elapsed s.gems
