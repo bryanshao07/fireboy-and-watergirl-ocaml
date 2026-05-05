@@ -123,6 +123,23 @@ let test_water_tile_uses_animation_sprites _ =
     [ "data/water0.png"; "data/water1.png" ]
     (Render.sprite_paths_of_tile Level.Water)
 
+let test_lava_tile_uses_animation_sprites _ =
+  assert_equal
+    [ "data/lava0.png"; "data/lava1.png" ]
+    (Render.sprite_paths_of_tile Level.Fire)
+
+let test_gem_tiles_use_sprites _ =
+  assert_equal [ "data/fire_gem.png" ]
+    (Render.sprite_paths_of_tile Level.DiamondFire);
+  assert_equal [ "data/water_gem.png" ]
+    (Render.sprite_paths_of_tile Level.DiamondWater)
+
+let test_hazard_tiles_draw_over_players _ =
+  assert_bool "water draws over players" (Render.draws_over_player Level.Water);
+  assert_bool "fire draws over players" (Render.draws_over_player Level.Fire);
+  assert_bool "acid draws over players" (Render.draws_over_player Level.Acid);
+  assert_bool "wall stays behind players" (not (Render.draws_over_player Level.Wall))
+
 let tests =
   "test suite" >::: [
     "spawn fireboy"              >:: test_spawn_fireboy;
@@ -139,6 +156,9 @@ let tests =
     "sprite rows keep png order" >:: test_sprite_rows_keep_png_order;
     "player rect scales"         >:: test_player_rect_uses_lower_left_and_scaled_size;
     "water tile uses sprites"    >:: test_water_tile_uses_animation_sprites;
+    "lava tile uses sprites"     >:: test_lava_tile_uses_animation_sprites;
+    "gem tiles use sprites"      >:: test_gem_tiles_use_sprites;
+    "hazards draw over players"  >:: test_hazard_tiles_draw_over_players;
   ]
 
 let _ = run_test_tt_main tests

@@ -124,4 +124,5 @@ let render (s : t) : unit =
   Render.draw_background rp s.level;
   Render.draw_level rp s.fireboy.anim_timer s.level;
   Render.draw_player rp s.fireboy;
-  Render.draw_player rp s.watergirl
+  Render.draw_player rp s.watergirl;
+  Render.draw_foreground_tiles rp s.fireboy.anim_timer s.level

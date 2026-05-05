@@ -54,15 +54,35 @@ let fireboy_idle =
 
 let sprite_paths_of_tile (t : tile) : string list =
   match t with
+  | Fire -> [ "data/lava0.png"; "data/lava1.png" ]
   | Water -> [ "data/water0.png"; "data/water1.png" ]
+  | Wall -> [ "data/wall.png" ]
+  | Walltop -> [ "data/walltop.png" ]
+  | DiamondFire -> [ "data/fire_gem.png" ]
+  | DiamondWater -> [ "data/water_gem.png" ]
   | _ -> []
 
+let lava_anim = lazy (Sprite.load_anim (sprite_paths_of_tile Fire) 4.0)
 let water_anim = lazy (Sprite.load_anim (sprite_paths_of_tile Water) 4.0)
+let wall_anim = lazy (Sprite.load_anim (sprite_paths_of_tile Wall) 4.0)
+let walltop_anim = lazy (Sprite.load_anim (sprite_paths_of_tile Walltop) 4.0)
+let fire_gem_anim = lazy (Sprite.load_anim (sprite_paths_of_tile DiamondFire) 1.0)
+let water_gem_anim = lazy (Sprite.load_anim (sprite_paths_of_tile DiamondWater) 1.0)
 
 let sprite_of_tile (timer : float) (t : tile) : Graphics.image option =
   match t with
+  | Fire -> Some (Sprite.frame_of (Lazy.force lava_anim) timer)
   | Water -> Some (Sprite.frame_of (Lazy.force water_anim) timer)
+  | Wall -> Some (Sprite.frame_of (Lazy.force wall_anim) timer)
+  | Walltop -> Some (Sprite.frame_of (Lazy.force walltop_anim) timer)
+  | DiamondFire -> Some (Sprite.frame_of (Lazy.force fire_gem_anim) timer)
+  | DiamondWater -> Some (Sprite.frame_of (Lazy.force water_gem_anim) timer)
   | _ -> None
+
+let draws_over_player (t : tile) : bool =
+  match t with
+  | Fire | Water | Acid -> true
+  | _ -> false
 
 (* pick anim based on player state *)
 let anim_of (p : Player.player) =
@@ -76,32 +96,26 @@ let draw_player (rp : render_params) (p : Player.player) : unit =
 
   Graphics.draw_image frame rect.sx rect.sy
 
-let background = lazy (Sprite.load_png "data/background.png")
-
-let crop_center img width height =
-  let rows = Graphics.dump_image img in
-  let img_h = Array.length rows in
-  let img_w = if img_h = 0 then 0 else Array.length rows.(0) in
-  let width = min width img_w in
-  let height = min height img_h in
-  let start_x = max 0 ((img_w - width) / 2) in
-  let start_y = max 0 ((img_h - height) / 2) in
-  Sprite.image_rows width height (fun x y -> rows.(start_y + y).(start_x + x))
-  |> Graphics.make_image
+let background_tile = lazy (Sprite.load_png "data/background.png")
 
 let draw_background (rp : render_params) (lvl : Level.t) : unit =
   Graphics.set_color Graphics.black;
   Graphics.fill_rect 0 0 (Graphics.size_x ()) (Graphics.size_y ());
-  let img = Lazy.force background in
-  let w = lvl.width * rp.rts in
-  let h = lvl.height * rp.rts in
-  let img = crop_center img w h in
-  Graphics.draw_image img rp.offset_x rp.offset_y
+  let img = Lazy.force background_tile in
+  let img = Sprite.scale_image img rp.rts rp.rts in
+  for row = 0 to lvl.height - 1 do
+    for col = 0 to lvl.width - 1 do
+      Graphics.draw_image img
+        (rp.offset_x + (col * rp.rts))
+        (rp.offset_y + (row * rp.rts))
+    done
+  done
 
 let color_of_tile (t : tile) : Graphics.color =
   match t with
   | Empty -> Graphics.white
   | Wall -> Graphics.black
+  | Walltop -> Graphics.black
   | Fire -> Graphics.red
   | Water -> Graphics.blue
   | Acid -> Graphics.green
@@ -135,5 +149,15 @@ let draw_level rp timer lvl : unit =
       let screen_y = lvl.height - 1 - row in
 
       draw_tile rp timer col screen_y tile
+    done
+  done
+
+let draw_foreground_tiles rp timer lvl : unit =
+  for row = 0 to lvl.height - 1 do
+    for col = 0 to lvl.width - 1 do
+      let tile = lvl.grid.(row).(col) in
+      if draws_over_player tile then
+        let screen_y = lvl.height - 1 - row in
+        draw_tile rp timer col screen_y tile
     done
   done
