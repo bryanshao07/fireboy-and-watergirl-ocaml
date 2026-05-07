@@ -26,6 +26,16 @@ let get lvl x y =
   if x < 0 || y < 0 || x >= lvl.width || y >= lvl.height then Wall
   else lvl.grid.(y).(x)
 
+let set lvl x y tile =
+  if x >= 0 && y >= 0 && x < lvl.width && y < lvl.height then
+    lvl.grid.(y).(x) <- tile
+
+let copy lvl =
+  {
+    lvl with
+    grid = Array.map Array.copy lvl.grid;
+  }
+
 let is_solid = function
   | Walltop -> true
   | Wall -> true

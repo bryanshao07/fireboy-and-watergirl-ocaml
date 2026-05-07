@@ -3,7 +3,7 @@ open Teamproject
 type scene =
   | Intro
   | InGame of Game.t
-  | Win of { time : float; gems : int }
+  | Win of { time : float; red_gems : int; blue_gems : int }
 
 let () =
   let target_frame_time = 1. /. 60. in
@@ -37,10 +37,16 @@ let () =
         Game.render game';
         (match game'.Game.status with
         | Game.Won ->
-            scene := Win { time = game'.Game.elapsed; gems = game'.Game.gems }
+            scene :=
+              Win
+                {
+                  time = game'.Game.elapsed;
+                  red_gems = game'.Game.red_gems;
+                  blue_gems = game'.Game.blue_gems;
+                }
         | _ -> scene := InGame game')
-    | Win { time; gems } ->
-        Render.draw_win time gems;
+    | Win { time; red_gems; blue_gems } ->
+        Render.draw_win time red_gems blue_gems;
         if Input.confirm_just_pressed () then
           scene := InGame (Game.init Level.sample_level));
 

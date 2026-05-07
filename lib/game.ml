@@ -14,7 +14,8 @@ type t = {
   level : Level.t;
   status : status;
   elapsed : float;
-  gems : int;
+  red_gems : int;
+  blue_gems : int;
 }
 
 let pixel_to_tile (px : float) (py : float) (lvl : Level.t) : int * int =
@@ -82,13 +83,15 @@ let spawn_watergirl (x, y) : player =
   }
 
 let init (level : Level.t) : t =
+  let level = Level.copy level in
   {
     fireboy = spawn_fireboy (fireboy_spawn_of level);
     watergirl = spawn_watergirl (watergirl_spawn_of level);
     level;
     status = Playing;
     elapsed = 0.;
-    gems = 0;
+    red_gems = 0;
+    blue_gems = 0;
   }
 
 let check_win (fb : player) (wg : player) (level : Level.t) : bool =
@@ -99,6 +102,28 @@ let check_win (fb : player) (wg : player) (level : Level.t) : bool =
   let wtx, wty = center_tile wg in
   Level.get level ftx fty = Level.ExitFire
   && Level.get level wtx wty = Level.ExitWater
+
+let collect_diamonds (p : player) (level : Level.t) : int * int =
+  let h = Level.height level in
+  let col_lo = int_of_float p.x / tile_size in
+  let col_hi = int_of_float (p.x +. player_width -. 1.) / tile_size in
+  let row_lo = h - 1 - (int_of_float (p.y +. player_height -. 1.) / tile_size) in
+  let row_hi = h - 1 - (int_of_float p.y / tile_size) in
+  let red = ref 0 in
+  let blue = ref 0 in
+  for r = row_lo to row_hi do
+    for c = col_lo to col_hi do
+      match (p.character, Level.get level c r) with
+      | Fireboy, Level.DiamondFire ->
+          Level.set level c r Level.Empty;
+          incr red
+      | Watergirl, Level.DiamondWater ->
+          Level.set level c r Level.Empty;
+          incr blue
+      | _ -> ()
+    done
+  done;
+  (!red, !blue)
 
 let check_death (p : player) (level : Level.t) : player =
   let tx, ty =
@@ -130,6 +155,10 @@ let tick (dt : float) (s : t) (fb_keys : Input.keys) (wg_keys : Input.keys) : t
       let wg = Physics.update dt s.level s.watergirl wg_keys in
       let fb = check_death fb s.level in
       let wg = check_death wg s.level in
+      let red_fb, _ = collect_diamonds fb s.level in
+      let _, blue_wg = collect_diamonds wg s.level in
+      let red_gems = s.red_gems + red_fb in
+      let blue_gems = s.blue_gems + blue_wg in
       let elapsed' = s.elapsed +. dt in
       if (not fb.alive) || not wg.alive then
         {
@@ -138,6 +167,8 @@ let tick (dt : float) (s : t) (fb_keys : Input.keys) (wg_keys : Input.keys) : t
           watergirl = wg;
           status = Resetting reset_delay;
           elapsed = elapsed';
+          red_gems;
+          blue_gems;
         }
       else if check_win fb wg s.level then
         {
@@ -146,8 +177,18 @@ let tick (dt : float) (s : t) (fb_keys : Input.keys) (wg_keys : Input.keys) : t
           watergirl = wg;
           status = Won;
           elapsed = elapsed';
+          red_gems;
+          blue_gems;
         }
-      else { s with fireboy = fb; watergirl = wg; elapsed = elapsed' }
+      else
+        {
+          s with
+          fireboy = fb;
+          watergirl = wg;
+          elapsed = elapsed';
+          red_gems;
+          blue_gems;
+        }
 
 let render (s : t) : unit =
   let rp = Render.compute_render_params s.level in
@@ -157,4 +198,4 @@ let render (s : t) : unit =
   Render.draw_player rp s.watergirl;
   Render.draw_foreground_tiles rp s.fireboy.anim_timer s.level;
   Render.draw_vignette ();
-  Render.draw_hud s.elapsed s.gems
+  Render.draw_hud s.elapsed s.red_gems s.blue_gems
