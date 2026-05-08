@@ -51,5 +51,5 @@ val tile_of_char : char -> tile
     Raises [Failure] on inconsistent widths or unknown characters. *)
 val from_string_list : string list -> t
 
-(** Built-in test level. *)
-val sample_level : t
+(** The first built-in level. *)
+val level_one : t
