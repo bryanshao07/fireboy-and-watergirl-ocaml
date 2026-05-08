@@ -1,4 +1,4 @@
-This is our project for CS 3110.
+This is our project for CS 3110!
 
 Team Members:
 Aayan Hussain (ah2425)
