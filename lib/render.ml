@@ -216,6 +216,52 @@ let draw_centered x y text =
   Graphics.moveto (x - (tw / 2)) y;
   Graphics.draw_string text
 
+(* Format seconds as M:SS.cc (e.g. 1:23.45) *)
+let format_time secs =
+  let total_cs = int_of_float (secs *. 100.0) in
+  let mins = total_cs / 6000 in
+  let s = (total_cs / 100) mod 60 in
+  let cs = total_cs mod 100 in
+  Printf.sprintf "%d:%02d.%02d" mins s cs
+
+let draw_hud (time : float) (red_gems : int) (blue_gems : int) : unit =
+  (try Graphics.set_font "-misc-fixed-bold-r-normal-*-16-*-*-*-*-*-iso8859-1"
+   with _ -> ());
+  let h = Graphics.size_y () in
+  let time_text = "TIME  " ^ format_time time in
+  let red_text = Printf.sprintf "RED  %d" red_gems in
+  let blue_text = Printf.sprintf "BLUE  %d" blue_gems in
+  let tw, th = Graphics.text_size time_text in
+  let rw, _ = Graphics.text_size red_text in
+  let bw, _ = Graphics.text_size blue_text in
+  let pad = 10 in
+  let gap = 20 in
+  let panel_w = tw + rw + bw + (pad * 2) + (gap * 2) in
+  let panel_h = th + (pad * 2) in
+  let panel_x = 14 in
+  let panel_y = h - panel_h - 14 in
+
+  (* Panel background *)
+  Graphics.set_color (Graphics.rgb 28 24 20);
+  Graphics.fill_rect panel_x panel_y panel_w panel_h;
+  Graphics.set_color (Graphics.rgb 120 100 50);
+  Graphics.draw_rect panel_x panel_y panel_w panel_h;
+
+  (* Time *)
+  Graphics.set_color (Graphics.rgb 255 220 90);
+  Graphics.moveto (panel_x + pad) (panel_y + pad);
+  Graphics.draw_string time_text;
+
+  (* Red gems *)
+  Graphics.set_color (Graphics.rgb 255 100 100);
+  Graphics.moveto (panel_x + pad + tw + gap) (panel_y + pad);
+  Graphics.draw_string red_text;
+
+  (* Blue gems *)
+  Graphics.set_color (Graphics.rgb 100 160 255);
+  Graphics.moveto (panel_x + pad + tw + gap + rw + gap) (panel_y + pad);
+  Graphics.draw_string blue_text
+
 let draw_intro () =
   let w = Graphics.size_x () in
   let h = Graphics.size_y () in
@@ -340,7 +386,7 @@ let draw_intro () =
   Graphics.set_color (Graphics.rgb 175 155 75);
   draw_centered cx 45 "Press  SPACE  or  I / W  to start          Q  to quit"
 
-let draw_win () =
+let draw_win (time : float) (red_gems : int) (blue_gems : int) =
   let w = Graphics.size_x () in
   let h = Graphics.size_y () in
   let cx = w / 2 in
@@ -395,14 +441,59 @@ let draw_win () =
   Graphics.set_color (Graphics.rgb 155 155 155);
   draw_centered cx (title_y - 105) "made it out safely!";
 
+  (* Stats panel: TIME, RED gems, BLUE gems *)
+  let panel_w = 540 and panel_h = 90 in
+  let panel_x = cx - panel_w / 2 in
+  let panel_y = title_y - 220 in
+  Graphics.set_color (Graphics.rgb 38 32 18);
+  Graphics.fill_rect (panel_x + 3) (panel_y - 3) panel_w panel_h;
+  Graphics.set_color (Graphics.rgb 55 46 22);
+  Graphics.fill_rect panel_x panel_y panel_w panel_h;
+  Graphics.set_color (Graphics.rgb 130 110 55);
+  Graphics.draw_rect panel_x panel_y panel_w panel_h;
+
+  (* Vertical dividers between the three columns *)
+  let col_w = panel_w / 3 in
+  let div1_x = panel_x + col_w in
+  let div2_x = panel_x + (col_w * 2) in
+  Graphics.set_color (Graphics.rgb 95 78 38);
+  Graphics.moveto div1_x (panel_y + 10);
+  Graphics.lineto div1_x (panel_y + panel_h - 10);
+  Graphics.moveto div2_x (panel_y + 10);
+  Graphics.lineto div2_x (panel_y + panel_h - 10);
+
+  let time_cx = panel_x + (col_w / 2) in
+  let red_cx = panel_x + col_w + (col_w / 2) in
+  let blue_cx = panel_x + (col_w * 2) + (col_w / 2) in
+
+  (* Labels *)
+  (try Graphics.set_font "-misc-fixed-bold-r-normal-*-14-*-*-*-*-*-iso8859-1"
+   with _ -> ());
+  Graphics.set_color (Graphics.rgb 200 175 70);
+  draw_centered time_cx (panel_y + panel_h - 22) "TIME";
+  Graphics.set_color (Graphics.rgb 255 130 130);
+  draw_centered red_cx (panel_y + panel_h - 22) "RED";
+  Graphics.set_color (Graphics.rgb 130 175 255);
+  draw_centered blue_cx (panel_y + panel_h - 22) "BLUE";
+
+  (* Values *)
+  (try Graphics.set_font "-misc-fixed-bold-r-normal-*-24-*-*-*-*-*-iso8859-1"
+   with _ -> ());
+  Graphics.set_color (Graphics.rgb 255 220 90);
+  draw_centered time_cx (panel_y + 18) (format_time time);
+  Graphics.set_color (Graphics.rgb 255 130 130);
+  draw_centered red_cx (panel_y + 18) (string_of_int red_gems);
+  Graphics.set_color (Graphics.rgb 130 175 255);
+  draw_centered blue_cx (panel_y + 18) (string_of_int blue_gems);
+
   (* Play Again button *)
   (try Graphics.set_font "-misc-fixed-bold-r-normal-*-16-*-*-*-*-*-iso8859-1"
    with _ -> ());
   let pa_text = "PRESS  SPACE  TO  PLAY  AGAIN" in
   let pat, pah = Graphics.text_size pa_text in
   let btn_w = pat + 40 and btn_h = 50 in
-  let btn_x = cx - (btn_w / 2) in
-  let btn_y = title_y - 170 in
+  let btn_x = cx - btn_w / 2 in
+  let btn_y = panel_y - btn_h - 24 in
   Graphics.set_color (Graphics.rgb 58 42 6);
   Graphics.fill_rect (btn_x + 3) (btn_y - 3) btn_w btn_h;
   Graphics.set_color (Graphics.rgb 165 125 32);
