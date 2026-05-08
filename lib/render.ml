@@ -55,6 +55,14 @@ let fireboy_walk = lazy (Sprite.load_anim fireboy_walk_paths 8.0)
 let fireboy_idle =
   lazy (Sprite.load_anim [ "data/fb_idle0.png"; "data/fb_idle1.png" ] 8.0)
 
+let watergirl_walk =
+  lazy
+    (Sprite.load_anim
+       [ "data/wg_walk0.png"; "data/wg_walk1.png"; "data/wg_walk2.png" ]
+       8.0)
+
+let watergirl_idle = lazy (Sprite.load_anim [ "data/wg_idle0.png" ] 8.0)
+
 let sprite_paths_of_tile (t : tile) : string list =
   match t with
   | Fire -> [ "data/lava0.png"; "data/lava1.png" ]
@@ -73,10 +81,17 @@ let water_anim = lazy (Sprite.load_anim (sprite_paths_of_tile Water) 4.0)
 let acid_anim = lazy (Sprite.load_anim (sprite_paths_of_tile Acid) 4.0)
 let wall_anim = lazy (Sprite.load_anim (sprite_paths_of_tile Wall) 4.0)
 let walltop_anim = lazy (Sprite.load_anim (sprite_paths_of_tile Walltop) 4.0)
-let fire_gem_anim = lazy (Sprite.load_anim (sprite_paths_of_tile DiamondFire) 1.0)
-let water_gem_anim = lazy (Sprite.load_anim (sprite_paths_of_tile DiamondWater) 1.0)
+
+let fire_gem_anim =
+  lazy (Sprite.load_anim (sprite_paths_of_tile DiamondFire) 1.0)
+
+let water_gem_anim =
+  lazy (Sprite.load_anim (sprite_paths_of_tile DiamondWater) 1.0)
+
 let fire_exit_anim = lazy (Sprite.load_anim (sprite_paths_of_tile ExitFire) 1.0)
-let water_exit_anim = lazy (Sprite.load_anim (sprite_paths_of_tile ExitWater) 1.0)
+
+let water_exit_anim =
+  lazy (Sprite.load_anim (sprite_paths_of_tile ExitWater) 1.0)
 
 let sprite_of_tile (timer : float) (t : tile) : Graphics.image option =
   match t with
@@ -98,7 +113,9 @@ let draws_over_player (t : tile) : bool =
 
 (* pick anim based on player state *)
 let anim_of (p : Player.player) =
-  if Float.abs p.vx > 1.0 then fireboy_walk (* walking *) else fireboy_idle
+  match p.character with
+  | Fireboy -> if Float.abs p.vx > 1.0 then fireboy_walk else fireboy_idle
+  | Watergirl -> if Float.abs p.vx > 1.0 then watergirl_walk else watergirl_idle
 
 let draw_player (rp : render_params) (p : Player.player) : unit =
   let anim = anim_of p in
@@ -178,7 +195,6 @@ let draw_foreground_tiles rp timer lvl : unit =
   done
 
 let vignette = lazy (Sprite.load_png_rgba "data/vignette.png")
-
 let red c = (c lsr 16) land 0xff
 let green c = (c lsr 8) land 0xff
 let blue c = c land 0xff
@@ -197,7 +213,7 @@ let blend_pixel under (over : Sprite.rgba_pixel) =
 
 let draw_centered x y text =
   let tw, _ = Graphics.text_size text in
-  Graphics.moveto (x - tw / 2) y;
+  Graphics.moveto (x - (tw / 2)) y;
   Graphics.draw_string text
 
 let draw_intro () =
@@ -230,7 +246,7 @@ let draw_intro () =
   let wg_box_w = max 210 (wg_tw + 50) in
   let gap = 35 in
   let total_w = fb_box_w + gap + amp_tw + gap + wg_box_w in
-  let start_x = cx - total_w / 2 in
+  let start_x = cx - (total_w / 2) in
 
   (* FIREBOY box *)
   Graphics.set_color (Graphics.rgb 90 22 5);
@@ -238,12 +254,14 @@ let draw_intro () =
   Graphics.set_color (Graphics.rgb 145 38 10);
   Graphics.draw_rect start_x title_y fb_box_w box_h;
   Graphics.set_color (Graphics.rgb 255 90 30);
-  Graphics.moveto (start_x + (fb_box_w - fb_tw) / 2) (title_y + (box_h - fb_th) / 2);
+  Graphics.moveto
+    (start_x + ((fb_box_w - fb_tw) / 2))
+    (title_y + ((box_h - fb_th) / 2));
   Graphics.draw_string "FIREBOY";
 
   (* & *)
   Graphics.set_color (Graphics.rgb 220 210 200);
-  Graphics.moveto (start_x + fb_box_w + gap) (title_y + (box_h - fb_th) / 2);
+  Graphics.moveto (start_x + fb_box_w + gap) (title_y + ((box_h - fb_th) / 2));
   Graphics.draw_string "&";
 
   (* WATERGIRL box *)
@@ -253,7 +271,9 @@ let draw_intro () =
   Graphics.set_color (Graphics.rgb 18 65 145);
   Graphics.draw_rect wg_box_x title_y wg_box_w box_h;
   Graphics.set_color (Graphics.rgb 80 190 255);
-  Graphics.moveto (wg_box_x + (wg_box_w - wg_tw) / 2) (title_y + (box_h - wg_th) / 2);
+  Graphics.moveto
+    (wg_box_x + ((wg_box_w - wg_tw) / 2))
+    (title_y + ((box_h - wg_th) / 2));
   Graphics.draw_string "WATERGIRL";
 
   (* Subtitle *)
@@ -274,7 +294,7 @@ let draw_intro () =
   (try Graphics.set_font "-misc-fixed-bold-r-normal-*-24-*-*-*-*-*-iso8859-1"
    with _ -> ());
   let btn_w = 200 and btn_h = 60 in
-  let btn_x = cx - btn_w / 2 in
+  let btn_x = cx - (btn_w / 2) in
   let btn_y = sep_y - 88 in
   Graphics.set_color (Graphics.rgb 75 55 8);
   Graphics.fill_rect (btn_x + 4) (btn_y - 4) btn_w btn_h;
@@ -286,7 +306,7 @@ let draw_intro () =
   Graphics.draw_rect btn_x btn_y btn_w btn_h;
   let pt, ph = Graphics.text_size "PLAY" in
   Graphics.set_color (Graphics.rgb 45 28 0);
-  Graphics.moveto (cx - pt / 2) (btn_y + (btn_h - ph) / 2);
+  Graphics.moveto (cx - (pt / 2)) (btn_y + ((btn_h - ph) / 2));
   Graphics.draw_string "PLAY";
 
   (* Instructions header *)
@@ -297,18 +317,21 @@ let draw_intro () =
   draw_centered cx instr_y "INSTRUCTIONS";
   let hw, _ = Graphics.text_size "INSTRUCTIONS" in
   Graphics.set_color (Graphics.rgb 130 110 55);
-  Graphics.moveto (cx - hw / 2) (instr_y - 4);
-  Graphics.lineto (cx + hw / 2) (instr_y - 4);
+  Graphics.moveto (cx - (hw / 2)) (instr_y - 4);
+  Graphics.lineto (cx + (hw / 2)) (instr_y - 4);
 
   (* Controls *)
   (try Graphics.set_font "-misc-fixed-medium-r-normal-*-14-*-*-*-*-*-iso8859-1"
    with _ -> ());
   Graphics.set_color (Graphics.rgb 255 130 55);
-  draw_centered cx (instr_y - 28) "Fireboy  ( red )  :   J / L  to move     I  to jump";
+  draw_centered cx (instr_y - 28)
+    "Fireboy  ( red )  :   J / L  to move     I  to jump";
   Graphics.set_color (Graphics.rgb 75 185 255);
-  draw_centered cx (instr_y - 52) "Watergirl  ( blue )  :   A / D  to move     W  to jump";
+  draw_centered cx (instr_y - 52)
+    "Watergirl  ( blue )  :   A / D  to move     W  to jump";
   Graphics.set_color (Graphics.rgb 155 145 125);
-  draw_centered cx (instr_y - 76) "Fireboy avoids  WATER       Watergirl avoids  FIRE";
+  draw_centered cx (instr_y - 76)
+    "Fireboy avoids  WATER       Watergirl avoids  FIRE";
   draw_centered cx (instr_y - 96) "Both must reach their exits to win!";
 
   (* Footer *)
@@ -348,12 +371,12 @@ let draw_win () =
    with _ -> ());
   let win_text = "LEVEL  COMPLETE !" in
   let wt, wh = Graphics.text_size win_text in
-  let title_y = h * 3 / 5 + 80 in
+  let title_y = (h * 3 / 5) + 80 in
   Graphics.set_color (Graphics.rgb 75 62 8);
-  Graphics.moveto (cx - wt / 2 + 3) (title_y - 3);
+  Graphics.moveto (cx - (wt / 2) + 3) (title_y - 3);
   Graphics.draw_string win_text;
   Graphics.set_color (Graphics.rgb 255 215 45);
-  Graphics.moveto (cx - wt / 2) title_y;
+  Graphics.moveto (cx - (wt / 2)) title_y;
   Graphics.draw_string win_text;
   ignore wh;
 
@@ -378,7 +401,7 @@ let draw_win () =
   let pa_text = "PRESS  SPACE  TO  PLAY  AGAIN" in
   let pat, pah = Graphics.text_size pa_text in
   let btn_w = pat + 40 and btn_h = 50 in
-  let btn_x = cx - btn_w / 2 in
+  let btn_x = cx - (btn_w / 2) in
   let btn_y = title_y - 170 in
   Graphics.set_color (Graphics.rgb 58 42 6);
   Graphics.fill_rect (btn_x + 3) (btn_y - 3) btn_w btn_h;
@@ -389,7 +412,7 @@ let draw_win () =
   Graphics.set_color (Graphics.rgb 115 85 12);
   Graphics.draw_rect btn_x btn_y btn_w btn_h;
   Graphics.set_color (Graphics.rgb 38 22 0);
-  Graphics.moveto (cx - pat / 2) (btn_y + (btn_h - pah) / 2);
+  Graphics.moveto (cx - (pat / 2)) (btn_y + ((btn_h - pah) / 2));
   Graphics.draw_string pa_text;
 
   (* Quit hint *)
@@ -404,7 +427,8 @@ let draw_vignette () : unit =
   let overlay = Sprite.scale_rgba (Lazy.force vignette) w h in
   let screen = Graphics.get_image 0 0 w h |> Graphics.dump_image in
   let blended =
-    Sprite.image_rows w h (fun x y -> blend_pixel screen.(y).(x) overlay.pixels.(y).(x))
+    Sprite.image_rows w h (fun x y ->
+        blend_pixel screen.(y).(x) overlay.pixels.(y).(x))
     |> Graphics.make_image
   in
   Graphics.draw_image blended 0 0
