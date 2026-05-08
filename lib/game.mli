@@ -7,12 +7,15 @@ type status =
   | Resetting of float
   | Won
 
-(** A snapshot of the entire game. [level] is a private mutable copy made
-    by [init], so collecting gems doesn't affect the original. *)
+(** A snapshot of the entire game.
+    [level] is the current playing copy (which may have gems removed as
+    they're collected). [original_level] is the unmodified level used to
+    re-initialize after a death. *)
 type t = {
   fireboy : Player.player;
   watergirl : Player.player;
   level : Level.t;
+  original_level : Level.t;
   status : status;
   elapsed : float;
   red_gems : int;

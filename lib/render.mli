@@ -40,8 +40,9 @@ val draw_vignette : unit -> unit
 (** [draw_hud time red_gems blue_gems] draws the in-game stats panel. *)
 val draw_hud : float -> int -> int -> unit
 
-(** Draw the title screen. *)
-val draw_intro : unit -> unit
+(** [draw_intro lvl timer] draws the title screen, animated by [timer]
+    and previewing [lvl]. *)
+val draw_intro : Level.t -> float -> unit
 
 (** [draw_win time red_gems blue_gems] draws the level-complete screen. *)
 val draw_win : float -> int -> int -> unit

@@ -113,22 +113,22 @@ let test_scale_rgba_zero _ =
 (* ====================================================================== *)
 
 let test_init_status _ =
-  let g = Game.init Level.sample_level in
+  let g = Game.init Level.level_one in
   assert_equal Game.Playing g.status
 
 let test_init_zero_counters _ =
-  let g = Game.init Level.sample_level in
+  let g = Game.init Level.level_one in
   assert_equal 0. g.elapsed;
   assert_equal 0 g.red_gems;
   assert_equal 0 g.blue_gems
 
 let test_init_players_alive _ =
-  let g = Game.init Level.sample_level in
+  let g = Game.init Level.level_one in
   assert_bool "fireboy alive" g.fireboy.alive;
   assert_bool "watergirl alive" g.watergirl.alive
 
 let test_init_player_characters _ =
-  let g = Game.init Level.sample_level in
+  let g = Game.init Level.level_one in
   assert_equal Player.Fireboy g.fireboy.character;
   assert_equal Player.Watergirl g.watergirl.character
 
@@ -136,20 +136,20 @@ let no_keys : Input.keys =
   { left = false; right = false; jump_pressed = false }
 
 let test_won_status_is_sticky _ =
-  let g = { (Game.init Level.sample_level) with status = Game.Won } in
+  let g = { (Game.init Level.level_one) with status = Game.Won } in
   let g' = Game.tick 1.0 g no_keys no_keys in
   assert_equal Game.Won g'.status
 
 let test_won_freezes_elapsed _ =
   let g =
-    { (Game.init Level.sample_level) with status = Game.Won; elapsed = 42.0 }
+    { (Game.init Level.level_one) with status = Game.Won; elapsed = 42.0 }
   in
   let g' = Game.tick 1.0 g no_keys no_keys in
   assert_equal 42.0 g'.elapsed
 
 let test_resetting_counts_down _ =
   let g =
-    { (Game.init Level.sample_level) with status = Game.Resetting 1.0 }
+    { (Game.init Level.level_one) with status = Game.Resetting 1.0 }
   in
   let g' = Game.tick 0.3 g no_keys no_keys in
   match g'.status with
@@ -161,20 +161,20 @@ let test_resetting_counts_down _ =
 
 let test_resetting_to_playing _ =
   let g =
-    { (Game.init Level.sample_level) with status = Game.Resetting 0.1 }
+    { (Game.init Level.level_one) with status = Game.Resetting 0.1 }
   in
   let g' = Game.tick 0.5 g no_keys no_keys in
   assert_equal Game.Playing g'.status
 
 let test_resetting_clears_elapsed _ =
   (* When Resetting expires, [init] runs and resets elapsed to 0. *)
-  let base = Game.init Level.sample_level in
+  let base = Game.init Level.level_one in
   let g = { base with status = Game.Resetting 0.05; elapsed = 99.0 } in
   let g' = Game.tick 0.2 g no_keys no_keys in
   assert_equal 0.0 g'.elapsed
 
 let test_tick_advances_elapsed _ =
-  let g = Game.init Level.sample_level in
+  let g = Game.init Level.level_one in
   let g' = Game.tick 0.25 g no_keys no_keys in
   let diff = Float.abs (g'.elapsed -. 0.25) in
   assert_bool
@@ -184,7 +184,7 @@ let test_tick_advances_elapsed _ =
 let test_init_does_not_mutate_input _ =
   (* [init] copies the level internally so it can mutate gems on collection
      without affecting the caller's level. *)
-  let lvl = Level.copy Level.sample_level in
+  let lvl = Level.copy Level.level_one in
   let count_red l =
     let n = ref 0 in
     for y = 0 to Level.height l - 1 do
