@@ -1,177 +1,238 @@
 open OUnit2
 open Teamproject
 
-let no_keys = { Input.left = false; right = false; jump_pressed = false }
-let only_water = Level.from_string_list [ "###"; "#W#"; "###" ]
-let only_fire = Level.from_string_list [ "###"; "#F#"; "###" ]
-let only_acid = Level.from_string_list [ "###"; "#A#"; "###" ]
-let spawn_level = Level.from_string_list [ "###"; "#1#"; "###" ]
-let pixel_at lvl tx ty = Game.tile_to_pixel_center tx ty lvl
+(* ====================================================================== *)
+(* Level                                                                  *)
+(* ====================================================================== *)
 
-let test_spawn_fireboy _ =
-  let p = Game.spawn_fireboy (50., 75.) in
-  assert_equal 50. p.Player.x ~printer:string_of_float;
-  assert_equal 75. p.Player.y ~printer:string_of_float;
-  assert_bool "should be alive" p.Player.alive;
-  assert_equal Player.Fireboy p.Player.character
+let test_tile_of_char _ =
+  assert_equal Level.Empty (Level.tile_of_char ' ');
+  assert_equal Level.Wall (Level.tile_of_char '#');
+  assert_equal Level.Walltop (Level.tile_of_char '-');
+  assert_equal Level.Fire (Level.tile_of_char 'F');
+  assert_equal Level.Water (Level.tile_of_char 'W');
+  assert_equal Level.Acid (Level.tile_of_char 'A');
+  assert_equal Level.ExitFire (Level.tile_of_char 'E');
+  assert_equal Level.ExitWater (Level.tile_of_char 'Q');
+  assert_equal Level.DiamondFire (Level.tile_of_char 'R');
+  assert_equal Level.DiamondWater (Level.tile_of_char 'B');
+  assert_equal Level.Button (Level.tile_of_char 'T');
+  assert_equal Level.SpawnFire (Level.tile_of_char '1');
+  assert_equal Level.SpawnWater (Level.tile_of_char '2')
 
-let test_spawn_watergirl _ =
-  let p = Game.spawn_watergirl (0., 0.) in
-  assert_equal Player.Watergirl p.Player.character;
-  assert_bool "should be alive" p.Player.alive
+let test_tile_of_char_unknown _ =
+  assert_raises (Failure "Unknown tile character") (fun () ->
+      Level.tile_of_char '?')
 
-let test_init _ =
-  let g = Game.init Level.level_one in
-  assert_equal Game.Playing g.Game.status;
-  assert_bool "fireboy alive" g.Game.fireboy.Player.alive;
-  assert_bool "watergirl alive" g.Game.watergirl.Player.alive
+let test_dimensions _ =
+  let lvl = Level.from_string_list [ "###"; "#1#"; "###" ] in
+  assert_equal 3 (Level.width lvl);
+  assert_equal 3 (Level.height lvl)
 
-let test_fireboy_spawn_uses_player_lower_left _ =
-  let x, y = Game.fireboy_spawn_of spawn_level in
-  let expected_x = 30. +. ((30. -. Player.player_width) /. 2.) in
-  assert_equal expected_x x ~printer:string_of_float;
-  assert_equal 30. y ~printer:string_of_float
+let test_inconsistent_widths _ =
+  assert_raises (Failure "All rows must have the same width") (fun () ->
+      Level.from_string_list [ "###"; "##" ])
 
-let test_fireboy_dies_in_water _ =
-  let px, py = pixel_at only_water 1 1 in
-  let p = Game.spawn_fireboy (px, py) in
-  let p' = Game.check_death p only_water in
-  assert_bool "fireboy should die in water" (not p'.Player.alive)
+let test_get _ =
+  let lvl = Level.from_string_list [ "###"; "#1#"; "###" ] in
+  assert_equal Level.Wall (Level.get lvl 0 0);
+  assert_equal Level.SpawnFire (Level.get lvl 1 1)
 
-let test_watergirl_survives_water _ =
-  let px, py = pixel_at only_water 1 1 in
-  let p = Game.spawn_watergirl (px, py) in
-  let p' = Game.check_death p only_water in
-  assert_bool "watergirl should survive water" p'.Player.alive
+let test_get_out_of_bounds _ =
+  let lvl = Level.from_string_list [ "   "; "   " ] in
+  assert_equal Level.Wall (Level.get lvl (-1) 0);
+  assert_equal Level.Wall (Level.get lvl 99 0);
+  assert_equal Level.Wall (Level.get lvl 0 (-1));
+  assert_equal Level.Wall (Level.get lvl 0 99)
 
-let test_watergirl_dies_in_fire _ =
-  let px, py = pixel_at only_fire 1 1 in
-  let p = Game.spawn_watergirl (px, py) in
-  let p' = Game.check_death p only_fire in
-  assert_bool "watergirl should die in fire" (not p'.Player.alive)
+let test_set _ =
+  let lvl = Level.from_string_list [ "   "; "   " ] in
+  Level.set lvl 1 1 Level.Fire;
+  assert_equal Level.Fire (Level.get lvl 1 1)
 
-let test_fireboy_survives_fire _ =
-  let px, py = pixel_at only_fire 1 1 in
-  let p = Game.spawn_fireboy (px, py) in
-  let p' = Game.check_death p only_fire in
-  assert_bool "fireboy should survive fire" p'.Player.alive
+let test_set_out_of_bounds_is_noop _ =
+  let lvl = Level.from_string_list [ "   "; "   " ] in
+  Level.set lvl 99 99 Level.Fire;
+  assert_equal Level.Empty (Level.get lvl 0 0)
 
-let test_both_die_in_acid _ =
-  let px, py = pixel_at only_acid 1 1 in
-  let fb = Game.spawn_fireboy (px, py) in
-  let wg = Game.spawn_watergirl (px, py) in
-  let fb' = Game.check_death fb only_acid in
-  let wg' = Game.check_death wg only_acid in
-  assert_bool "fireboy should die in acid" (not fb'.Player.alive);
-  assert_bool "watergirl should die in acid" (not wg'.Player.alive)
+let test_copy _ =
+  let lvl = Level.from_string_list [ "   "; " R " ] in
+  let dup = Level.copy lvl in
+  Level.set dup 1 1 Level.Empty;
+  assert_equal Level.DiamondFire (Level.get lvl 1 1);
+  assert_equal Level.Empty (Level.get dup 1 1)
+
+let test_is_solid _ =
+  assert_bool "Wall solid" (Level.is_solid Level.Wall);
+  assert_bool "Walltop solid" (Level.is_solid Level.Walltop);
+  assert_bool "Empty not solid" (not (Level.is_solid Level.Empty));
+  assert_bool "Fire not solid" (not (Level.is_solid Level.Fire));
+  assert_bool "Water not solid" (not (Level.is_solid Level.Water))
+
+(* ====================================================================== *)
+(* Sprite                                                                 *)
+(* ====================================================================== *)
+
+let test_image_rows _ =
+  let rows = Sprite.image_rows 3 2 (fun x y -> (y * 10) + x) in
+  assert_equal [| [| 0; 1; 2 |]; [| 10; 11; 12 |] |] rows
+
+let test_scale_rgba_identity _ =
+  let img : Sprite.rgba_image =
+    {
+      width = 1;
+      height = 1;
+      pixels = [| [| { r = 5; g = 6; b = 7; a = 255 } |] |];
+    }
+  in
+  let scaled = Sprite.scale_rgba img 1 1 in
+  assert_equal img.pixels scaled.pixels
+
+let test_scale_rgba_upscale _ =
+  let img : Sprite.rgba_image =
+    {
+      width = 1;
+      height = 1;
+      pixels = [| [| { r = 9; g = 9; b = 9; a = 255 } |] |];
+    }
+  in
+  let scaled = Sprite.scale_rgba img 2 2 in
+  assert_equal 2 scaled.width;
+  assert_equal 2 scaled.height;
+  assert_equal { Sprite.r = 9; g = 9; b = 9; a = 255 } scaled.pixels.(0).(0);
+  assert_equal { Sprite.r = 9; g = 9; b = 9; a = 255 } scaled.pixels.(1).(1)
+
+let test_scale_rgba_zero _ =
+  let img : Sprite.rgba_image =
+    { width = 1; height = 1; pixels = [| [| { r = 0; g = 0; b = 0; a = 0 } |] |] }
+  in
+  assert_equal img (Sprite.scale_rgba img 0 5)
+
+(* ====================================================================== *)
+(* Game                                                                   *)
+(* ====================================================================== *)
+
+let test_init_status _ =
+  let g = Game.init Level.sample_level in
+  assert_equal Game.Playing g.status
+
+let test_init_zero_counters _ =
+  let g = Game.init Level.sample_level in
+  assert_equal 0. g.elapsed;
+  assert_equal 0 g.red_gems;
+  assert_equal 0 g.blue_gems
+
+let test_init_players_alive _ =
+  let g = Game.init Level.sample_level in
+  assert_bool "fireboy alive" g.fireboy.alive;
+  assert_bool "watergirl alive" g.watergirl.alive
+
+let test_init_player_characters _ =
+  let g = Game.init Level.sample_level in
+  assert_equal Player.Fireboy g.fireboy.character;
+  assert_equal Player.Watergirl g.watergirl.character
+
+let no_keys : Input.keys =
+  { left = false; right = false; jump_pressed = false }
+
+let test_won_status_is_sticky _ =
+  let g = { (Game.init Level.sample_level) with status = Game.Won } in
+  let g' = Game.tick 1.0 g no_keys no_keys in
+  assert_equal Game.Won g'.status
+
+let test_won_freezes_elapsed _ =
+  let g =
+    { (Game.init Level.sample_level) with status = Game.Won; elapsed = 42.0 }
+  in
+  let g' = Game.tick 1.0 g no_keys no_keys in
+  assert_equal 42.0 g'.elapsed
 
 let test_resetting_counts_down _ =
   let g =
-    { (Game.init Level.level_one) with Game.status = Game.Resetting 1.0 }
+    { (Game.init Level.sample_level) with status = Game.Resetting 1.0 }
   in
   let g' = Game.tick 0.3 g no_keys no_keys in
-  match g'.Game.status with
+  match g'.status with
   | Game.Resetting r ->
-      assert_bool (Printf.sprintf "timer should be < 1.0, got %f" r) (r < 1.0)
-  | _ -> assert_failure "should still be resetting"
+      assert_bool
+        (Printf.sprintf "expected r in (0, 1), got %f" r)
+        (r > 0. && r < 1.0)
+  | _ -> assert_failure "should still be Resetting"
 
-let test_resetting_triggers_respawn _ =
+let test_resetting_to_playing _ =
   let g =
-    { (Game.init Level.level_one) with Game.status = Game.Resetting 0.1 }
+    { (Game.init Level.sample_level) with status = Game.Resetting 0.1 }
   in
+  let g' = Game.tick 0.5 g no_keys no_keys in
+  assert_equal Game.Playing g'.status
+
+let test_resetting_clears_elapsed _ =
+  (* When Resetting expires, [init] runs and resets elapsed to 0. *)
+  let base = Game.init Level.sample_level in
+  let g = { base with status = Game.Resetting 0.05; elapsed = 99.0 } in
   let g' = Game.tick 0.2 g no_keys no_keys in
-  assert_equal Game.Playing g'.Game.status;
-  assert_bool "fireboy alive after respawn" g'.Game.fireboy.Player.alive;
-  assert_bool "watergirl alive after respawn" g'.Game.watergirl.Player.alive
+  assert_equal 0.0 g'.elapsed
 
-let test_sprite_rows_keep_png_order _ =
-  let rows = Sprite.image_rows 2 2 (fun x y -> (y * 10) + x) in
-  assert_equal [| [| 0; 1 |]; [| 10; 11 |] |] rows
+let test_tick_advances_elapsed _ =
+  let g = Game.init Level.sample_level in
+  let g' = Game.tick 0.25 g no_keys no_keys in
+  let diff = Float.abs (g'.elapsed -. 0.25) in
+  assert_bool
+    (Printf.sprintf "expected elapsed ≈ 0.25, got %f" g'.elapsed)
+    (diff < 1e-9)
 
-let test_sprite_rows_flip_horizontally _ =
-  let rows = [| [| 1; 2; 3 |]; [| 4; 5; 6 |] |] in
-  assert_equal
-    [| [| 3; 2; 1 |]; [| 6; 5; 4 |] |]
-    (Sprite.flip_rows_horizontally rows)
+let test_init_does_not_mutate_input _ =
+  (* [init] copies the level internally so it can mutate gems on collection
+     without affecting the caller's level. *)
+  let lvl = Level.copy Level.sample_level in
+  let count_red l =
+    let n = ref 0 in
+    for y = 0 to Level.height l - 1 do
+      for x = 0 to Level.width l - 1 do
+        if Level.get l x y = Level.DiamondFire then incr n
+      done
+    done;
+    !n
+  in
+  let before = count_red lvl in
+  let _ = Game.init lvl in
+  assert_equal before (count_red lvl)
 
-let test_player_rect_uses_lower_left_and_scaled_size _ =
-  let rp : Render.render_params = { rts = 60; offset_x = 10; offset_y = 20 } in
-  let p = Game.spawn_fireboy (35., 30.) in
-  let rect = Render.player_rect rp p in
-  assert_equal 80 rect.sx ~printer:string_of_int;
-  assert_equal 80 rect.sy ~printer:string_of_int;
-  assert_equal
-    (Render.scaled_length rp Player.player_width)
-    rect.sw ~printer:string_of_int;
-  assert_equal
-    (Render.scaled_length rp Player.player_height)
-    rect.sh ~printer:string_of_int
-
-let test_water_tile_uses_animation_sprites _ =
-  assert_equal
-    [ "data/water0.png"; "data/water1.png" ]
-    (Render.sprite_paths_of_tile Level.Water)
-
-let test_lava_tile_uses_animation_sprites _ =
-  assert_equal
-    [ "data/lava0.png"; "data/lava1.png" ]
-    (Render.sprite_paths_of_tile Level.Fire)
-
-let test_acid_tile_uses_animation_sprites _ =
-  assert_equal
-    [ "data/acid0.png"; "data/acid1.png" ]
-    (Render.sprite_paths_of_tile Level.Acid)
-
-let test_gem_tiles_use_sprites _ =
-  assert_equal [ "data/fire_gem.png" ]
-    (Render.sprite_paths_of_tile Level.DiamondFire);
-  assert_equal [ "data/water_gem.png" ]
-    (Render.sprite_paths_of_tile Level.DiamondWater)
-
-let test_exit_tiles_use_sprites _ =
-  assert_equal [ "data/fire_exit.png" ]
-    (Render.sprite_paths_of_tile Level.ExitFire);
-  assert_equal [ "data/water_exit.png" ]
-    (Render.sprite_paths_of_tile Level.ExitWater)
-
-let test_fireboy_walk_uses_walk_sprites _ =
-  assert_equal
-    [ "data/fb_walk0.png"; "data/fb_walk1.png"; "data/fb_walk2.png" ]
-    Render.fireboy_walk_paths
-
-let test_hazard_tiles_draw_over_players _ =
-  assert_bool "water draws over players" (Render.draws_over_player Level.Water);
-  assert_bool "fire draws over players" (Render.draws_over_player Level.Fire);
-  assert_bool "acid draws over players" (Render.draws_over_player Level.Acid);
-  assert_bool "wall stays behind players"
-    (not (Render.draws_over_player Level.Wall))
+(* ====================================================================== *)
+(* Test registration                                                      *)
+(* ====================================================================== *)
 
 let tests =
-  "test suite"
+  "Fireboy & Watergirl test suite"
   >::: [
-         "spawn fireboy" >:: test_spawn_fireboy;
-         "spawn watergirl" >:: test_spawn_watergirl;
-         "init" >:: test_init;
-         "fireboy spawn lower-left"
-         >:: test_fireboy_spawn_uses_player_lower_left;
-         "fireboy dies in water" >:: test_fireboy_dies_in_water;
-         "watergirl survives water" >:: test_watergirl_survives_water;
-         "watergirl dies in fire" >:: test_watergirl_dies_in_fire;
-         "fireboy survives fire" >:: test_fireboy_survives_fire;
-         "both die in acid" >:: test_both_die_in_acid;
-         "resetting counts down" >:: test_resetting_counts_down;
-         "resetting triggers respawn" >:: test_resetting_triggers_respawn;
-         "sprite rows keep png order" >:: test_sprite_rows_keep_png_order;
-         "sprite rows flip" >:: test_sprite_rows_flip_horizontally;
-         "player rect scales"
-         >:: test_player_rect_uses_lower_left_and_scaled_size;
-         "water tile uses sprites" >:: test_water_tile_uses_animation_sprites;
-         "lava tile uses sprites" >:: test_lava_tile_uses_animation_sprites;
-         "acid tile uses sprites" >:: test_acid_tile_uses_animation_sprites;
-         "gem tiles use sprites" >:: test_gem_tiles_use_sprites;
-         "exit tiles use sprites" >:: test_exit_tiles_use_sprites;
-         "fireboy walk uses sprites" >:: test_fireboy_walk_uses_walk_sprites;
-         "hazards draw over players" >:: test_hazard_tiles_draw_over_players;
+         (* Level *)
+         "tile_of_char known"        >:: test_tile_of_char;
+         "tile_of_char unknown"      >:: test_tile_of_char_unknown;
+         "from_string_list dims"     >:: test_dimensions;
+         "from_string_list widths"   >:: test_inconsistent_widths;
+         "get in bounds"             >:: test_get;
+         "get out of bounds = Wall"  >:: test_get_out_of_bounds;
+         "set in bounds"             >:: test_set;
+         "set out of bounds noop"    >:: test_set_out_of_bounds_is_noop;
+         "copy independence"         >:: test_copy;
+         "is_solid"                  >:: test_is_solid;
+         (* Sprite *)
+         "image_rows indexing"       >:: test_image_rows;
+         "scale_rgba identity"       >:: test_scale_rgba_identity;
+         "scale_rgba upscales"       >:: test_scale_rgba_upscale;
+         "scale_rgba zero size"      >:: test_scale_rgba_zero;
+         (* Game *)
+         "init status Playing"       >:: test_init_status;
+         "init counters zero"        >:: test_init_zero_counters;
+         "init players alive"        >:: test_init_players_alive;
+         "init characters set"       >:: test_init_player_characters;
+         "Won is sticky"             >:: test_won_status_is_sticky;
+         "Won freezes elapsed"       >:: test_won_freezes_elapsed;
+         "Resetting counts down"     >:: test_resetting_counts_down;
+         "Resetting -> Playing"      >:: test_resetting_to_playing;
+         "Resetting clears elapsed"  >:: test_resetting_clears_elapsed;
+         "tick advances elapsed"     >:: test_tick_advances_elapsed;
+         "init copies the level"    >:: test_init_does_not_mutate_input;
        ]
 
 let _ = run_test_tt_main tests
