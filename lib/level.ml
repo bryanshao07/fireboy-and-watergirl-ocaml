@@ -30,11 +30,7 @@ let set lvl x y tile =
   if x >= 0 && y >= 0 && x < lvl.width && y < lvl.height then
     lvl.grid.(y).(x) <- tile
 
-let copy lvl =
-  {
-    lvl with
-    grid = Array.map Array.copy lvl.grid;
-  }
+let copy lvl = { lvl with grid = Array.map Array.copy lvl.grid }
 
 let is_solid = function
   | Walltop -> true
@@ -74,7 +70,7 @@ let from_string_list rows =
   in
   { grid; width; height }
 
-let sample_level =
+let level_one =
   from_string_list
     [
       "############################";
@@ -86,7 +82,7 @@ let sample_level =
       "# B     #####              #";
       "#----                      #";
       "#####           -----      #";
-      "######################     #";
+      "#####-----------#####-     #";
       "#                       -  #";
       "#      R           B       #";
       "#     ---------------------#";

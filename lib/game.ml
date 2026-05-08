@@ -12,6 +12,7 @@ type t = {
   fireboy : player;
   watergirl : player;
   level : Level.t;
+  original_level : Level.t;
   status : status;
   elapsed : float;
   red_gems : int;
@@ -83,11 +84,11 @@ let spawn_watergirl (x, y) : player =
   }
 
 let init (level : Level.t) : t =
-  let level = Level.copy level in
   {
     fireboy = spawn_fireboy (fireboy_spawn_of level);
     watergirl = spawn_watergirl (watergirl_spawn_of level);
-    level;
+    level = Level.copy level;
+    original_level = level;
     status = Playing;
     elapsed = 0.;
     red_gems = 0;
@@ -96,7 +97,10 @@ let init (level : Level.t) : t =
 
 let check_win (fb : player) (wg : player) (level : Level.t) : bool =
   let center_tile p =
-    pixel_to_tile (p.x +. (player_width /. 2.)) (p.y +. (player_height /. 2.)) level
+    pixel_to_tile
+      (p.x +. (player_width /. 2.))
+      (p.y +. (player_height /. 2.))
+      level
   in
   let ftx, fty = center_tile fb in
   let wtx, wty = center_tile wg in
@@ -107,7 +111,9 @@ let collect_diamonds (p : player) (level : Level.t) : int * int =
   let h = Level.height level in
   let col_lo = int_of_float p.x / tile_size in
   let col_hi = int_of_float (p.x +. player_width -. 1.) / tile_size in
-  let row_lo = h - 1 - (int_of_float (p.y +. player_height -. 1.) / tile_size) in
+  let row_lo =
+    h - 1 - (int_of_float (p.y +. player_height -. 1.) / tile_size)
+  in
   let row_hi = h - 1 - (int_of_float p.y / tile_size) in
   let red = ref 0 in
   let blue = ref 0 in
@@ -148,7 +154,7 @@ let tick (dt : float) (s : t) (fb_keys : Input.keys) (wg_keys : Input.keys) : t
   | Won -> s
   | Resetting remaining ->
       let remaining' = remaining -. dt in
-      if remaining' <= 0. then init s.level
+      if remaining' <= 0. then init s.original_level
       else { s with status = Resetting remaining' }
   | Playing ->
       let fb = Physics.update dt s.level s.fireboy fb_keys in
