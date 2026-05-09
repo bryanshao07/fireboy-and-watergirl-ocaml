@@ -108,9 +108,251 @@ let test_scale_rgba_zero _ =
   in
   assert_equal img (Sprite.scale_rgba img 0 5)
 
+let test_scale_rgba_zero_height _ =
+  let img : Sprite.rgba_image =
+    { width = 1; height = 1; pixels = [| [| { r = 1; g = 2; b = 3; a = 255 } |] |] }
+  in
+  assert_equal img (Sprite.scale_rgba img 5 0)
+
+let test_scale_rgba_zero_src_width _ =
+  let img : Sprite.rgba_image = { width = 0; height = 0; pixels = [||] } in
+  assert_equal img (Sprite.scale_rgba img 5 5)
+
+let test_scale_rgba_zero_src_height _ =
+  let img : Sprite.rgba_image = { width = 1; height = 0; pixels = [||] } in
+  assert_equal img (Sprite.scale_rgba img 5 5)
+
+let test_flip_rows_horizontally _ =
+  let rows = [| [| 1; 2; 3 |]; [| 4; 5; 6 |] |] in
+  let f = Sprite.flip_rows_horizontally rows in
+  assert_equal [| 3; 2; 1 |] f.(0);
+  assert_equal [| 6; 5; 4 |] f.(1)
+
+(* ====================================================================== *)
+(* Level (additional)                                                     *)
+(* ====================================================================== *)
+
+let test_from_empty_list _ =
+  let lvl = Level.from_string_list [] in
+  assert_equal 0 (Level.width lvl);
+  assert_equal 0 (Level.height lvl)
+
+(* ====================================================================== *)
+(* Physics                                                                *)
+(* ====================================================================== *)
+
+(* 5-row x 10-col enclosed arena. Floor = grid row 4, ceiling = row 0.
+   Player standing on floor has y = 30. Right wall col 9, left wall col 0. *)
+let phys_level =
+  Level.from_string_list
+    [ "##########"
+    ; "#        #"
+    ; "#        #"
+    ; "#        #"
+    ; "##########" ]
+
+let make_fb ?(x = 100.) ?(y = 30.) ?(vx = 0.) ?(vy = 0.) ?(on_ground = true) () : Player.player =
+  { Player.x; y; vx; vy; on_ground; character = Player.Fireboy;
+    alive = true; anim_timer = 0. }
+
+let no_keys    : Input.keys = { Input.left = false; right = false; jump_pressed = false }
+let right_keys : Input.keys = { Input.left = false; right = true;  jump_pressed = false }
+let left_keys  : Input.keys = { Input.left = true;  right = false; jump_pressed = false }
+let jump_keys  : Input.keys = { Input.left = false; right = false; jump_pressed = true  }
+
+let test_physics_move_right _ =
+  let p = make_fb ~x:100. ~y:30. ~on_ground:true () in
+  let p' = Physics.update 0.016 phys_level p right_keys in
+  assert_bool "moved right" (p'.Player.x > 100.)
+
+let test_physics_move_left _ =
+  let p = make_fb ~x:100. ~y:30. ~on_ground:true () in
+  let p' = Physics.update 0.016 phys_level p left_keys in
+  assert_bool "moved left" (p'.Player.x < 100.)
+
+let test_physics_friction_positive _ =
+  (* vx=50, on_ground, no keys -> friction reduces vx toward zero *)
+  let p = make_fb ~x:100. ~y:30. ~vx:50. ~on_ground:true () in
+  let p' = Physics.update 0.016 phys_level p no_keys in
+  assert_bool "friction slows positive vx" (p'.Player.vx >= 0. && p'.Player.vx < 50.)
+
+let test_physics_friction_negative _ =
+  (* vx=-50, on_ground, no keys -> friction reduces magnitude *)
+  let p = make_fb ~x:100. ~y:30. ~vx:(-50.) ~on_ground:true () in
+  let p' = Physics.update 0.016 phys_level p no_keys in
+  assert_bool "friction slows negative vx" (p'.Player.vx <= 0. && p'.Player.vx > -50.)
+
+let test_physics_friction_zero _ =
+  (* vx=5 < drag (720*0.016=11.52) -> zeroed; vx=0 path in collision code *)
+  let p = make_fb ~x:100. ~y:30. ~vx:5. ~on_ground:true () in
+  let p' = Physics.update 0.016 phys_level p no_keys in
+  assert_equal 0. p'.Player.vx
+
+let test_physics_airborne_keeps_vx _ =
+  (* not on_ground, no keys -> vx = p.vx unchanged *)
+  let p = make_fb ~x:100. ~y:60. ~vx:10. ~on_ground:false () in
+  let p' = Physics.update 0.016 phys_level p no_keys in
+  assert_equal 10. p'.Player.vx
+
+let test_physics_jump _ =
+  let p = make_fb ~x:100. ~y:30. ~on_ground:true () in
+  let p' = Physics.update 0.016 phys_level p jump_keys in
+  assert_bool "jump gives upward vy" (p'.Player.vy > 0.)
+
+let test_physics_right_wall _ =
+  (* player near right wall moving right -> snapped, vx zeroed *)
+  let p = make_fb ~x:241. ~y:30. ~on_ground:true () in
+  let p' = Physics.update 0.05 phys_level p right_keys in
+  assert_equal 0. p'.Player.vx;
+  assert_equal 240. p'.Player.x
+
+let test_physics_left_wall _ =
+  (* player near left wall moving left -> snapped, vx zeroed *)
+  let p = make_fb ~x:31. ~y:30. ~on_ground:true () in
+  let p' = Physics.update 0.05 phys_level p left_keys in
+  assert_equal 0. p'.Player.vx;
+  assert_equal 30. p'.Player.x
+
+let test_physics_floor_landing _ =
+  let p = make_fb ~x:100. ~y:31. ~vy:(-200.) ~on_ground:false () in
+  let p' = Physics.update 0.016 phys_level p no_keys in
+  assert_bool "landed" p'.Player.on_ground
+
+let test_physics_ceiling_hit _ =
+  (* large upward vy -> hits ceiling -> vy zeroed, not on_ground *)
+  let p = make_fb ~x:100. ~y:70. ~vy:600. ~on_ground:false () in
+  let p' = Physics.update 0.05 phys_level p no_keys in
+  assert_equal 0. p'.Player.vy;
+  assert_bool "not on ground after ceiling" (not p'.Player.on_ground)
+
 (* ====================================================================== *)
 (* Game                                                                   *)
 (* ====================================================================== *)
+
+let make_player ?(x = 30.) ?(y = 30.) ?(alive = true) ch : Player.player =
+  { Player.x; y; vx = 0.; vy = 0.; on_ground = false;
+    character = ch; alive; anim_timer = 0. }
+
+let water_lvl     = Level.from_string_list ["###"; "#W#"; "###"]
+let fire_lvl      = Level.from_string_list ["###"; "#F#"; "###"]
+let acid_lvl      = Level.from_string_list ["###"; "#A#"; "###"]
+let safe_lvl      = Level.from_string_list ["###"; "# #"; "###"]
+let exit_lvl      = Level.from_string_list ["###"; "EQ#"; "###"]
+let gem_fire_lvl  = Level.from_string_list ["###"; "#R#"; "###"]
+let gem_water_lvl = Level.from_string_list ["###"; "#B#"; "###"]
+
+let test_check_death_fireboy_water _ =
+  let fb = make_player Player.Fireboy in
+  let fb' = Game.check_death fb water_lvl in
+  assert_bool "fireboy dies in water" (not fb'.Player.alive)
+
+let test_check_death_watergirl_fire _ =
+  let wg = make_player Player.Watergirl in
+  let wg' = Game.check_death wg fire_lvl in
+  assert_bool "watergirl dies in fire" (not wg'.Player.alive)
+
+let test_check_death_acid _ =
+  let fb = make_player Player.Fireboy in
+  let fb' = Game.check_death fb acid_lvl in
+  assert_bool "dies in acid" (not fb'.Player.alive)
+
+let test_check_death_safe _ =
+  let fb = make_player Player.Fireboy in
+  let fb' = Game.check_death fb safe_lvl in
+  assert_bool "safe in empty tile" fb'.Player.alive
+
+let test_check_win_true _ =
+  (* fb center at tile (0,1)=ExitFire, wg center at tile (1,1)=ExitWater *)
+  let fb = make_player ~x:0.  ~y:22. Player.Fireboy   in
+  let wg = make_player ~x:30. ~y:22. Player.Watergirl in
+  assert_bool "win condition true" (Game.check_win fb wg exit_lvl)
+
+let test_check_win_false _ =
+  let fb = make_player ~x:30. ~y:30. Player.Fireboy   in
+  let wg = make_player ~x:30. ~y:30. Player.Watergirl in
+  assert_bool "win condition false" (not (Game.check_win fb wg safe_lvl))
+
+let test_collect_diamonds_fireboy _ =
+  let fb  = make_player Player.Fireboy in
+  let lvl = Level.copy gem_fire_lvl in
+  let (red, blue) = Game.collect_diamonds fb lvl in
+  assert_equal 1 red; assert_equal 0 blue
+
+let test_collect_diamonds_watergirl _ =
+  let wg  = make_player Player.Watergirl in
+  let lvl = Level.copy gem_water_lvl in
+  let (red, blue) = Game.collect_diamonds wg lvl in
+  assert_equal 0 red; assert_equal 1 blue
+
+let test_collect_diamonds_none _ =
+  let fb  = make_player Player.Fireboy in
+  let lvl = Level.copy safe_lvl in
+  let (red, blue) = Game.collect_diamonds fb lvl in
+  assert_equal 0 red; assert_equal 0 blue
+
+let test_tile_to_pixel_center _ =
+  (* exit_lvl is 3x3; tile (0,1): px=15, py=90-30-15=45 *)
+  let (px, py) = Game.tile_to_pixel_center 0 1 exit_lvl in
+  assert_equal 15. px; assert_equal 45. py
+
+let test_fireboy_spawn_of _ =
+  let lvl = Level.from_string_list ["###"; "#1#"; "###"] in
+  let (x, y) = Game.fireboy_spawn_of lvl in
+  assert_equal 30. x; assert_equal 30. y
+
+let test_fireboy_spawn_no_tile _ =
+  (* No SpawnFire in level -> fallback (100., 100.) *)
+  let (x, y) = Game.fireboy_spawn_of safe_lvl in
+  assert_equal 100. x; assert_equal 100. y
+
+let test_fireboy_spawn_two_tiles _ =
+  (* Two SpawnFire tiles: find_spawn takes first, skips second (!result=None is false) *)
+  let lvl = Level.from_string_list ["###"; "#1#"; "#1#"] in
+  let (x, _) = Game.fireboy_spawn_of lvl in
+  assert_bool "spawn found" (x >= 0.)
+
+let test_spawn_fireboy _ =
+  let p = Game.spawn_fireboy (10., 20.) in
+  assert_equal Player.Fireboy p.Player.character;
+  assert_equal 10. p.Player.x; assert_equal 20. p.Player.y;
+  assert_bool "alive" p.Player.alive
+
+let test_spawn_watergirl _ =
+  let p = Game.spawn_watergirl (5., 15.) in
+  assert_equal Player.Watergirl p.Player.character;
+  assert_equal 5. p.Player.x; assert_equal 15. p.Player.y;
+  assert_bool "alive" p.Player.alive
+
+let test_tick_player_death _ =
+  (* Fireboy starts inside water tile -> dies -> Resetting *)
+  let base = Game.init water_lvl in
+  let g = { base with Game.
+    fireboy   = { base.Game.fireboy   with Player.x = 30.; y = 30. };
+    watergirl = { base.Game.watergirl with Player.x = 30.; y = 30. } } in
+  let g' = Game.tick 0.016 g no_keys no_keys in
+  (match g'.Game.status with
+   | Game.Resetting _ -> ()
+   | _ -> assert_failure "expected Resetting after death")
+
+let test_tick_watergirl_death _ =
+  (* Fireboy safe in fire, watergirl dies -> covers right side of || in tick *)
+  let base = Game.init fire_lvl in
+  let g = { base with Game.
+    fireboy   = { base.Game.fireboy   with Player.x = 30.; y = 30. };
+    watergirl = { base.Game.watergirl with Player.x = 30.; y = 30. } } in
+  let g' = Game.tick 0.016 g no_keys no_keys in
+  (match g'.Game.status with
+   | Game.Resetting _ -> ()
+   | _ -> assert_failure "expected Resetting after watergirl death")
+
+let test_tick_win_condition _ =
+  (* Both players at exit tiles -> Won *)
+  let base = Game.init exit_lvl in
+  let g = { base with Game.
+    fireboy   = { base.Game.fireboy   with Player.x = 0.;  y = 22. };
+    watergirl = { base.Game.watergirl with Player.x = 30.; y = 22. } } in
+  let g' = Game.tick 0.016 g no_keys no_keys in
+  assert_equal Game.Won g'.Game.status
 
 let test_init_status _ =
   let g = Game.init Level.level_one in
@@ -131,9 +373,6 @@ let test_init_player_characters _ =
   let g = Game.init Level.level_one in
   assert_equal Player.Fireboy g.fireboy.character;
   assert_equal Player.Watergirl g.watergirl.character
-
-let no_keys : Input.keys =
-  { left = false; right = false; jump_pressed = false }
 
 let test_won_status_is_sticky _ =
   let g = { (Game.init Level.level_one) with status = Game.Won } in
@@ -206,33 +445,68 @@ let tests =
   "Fireboy & Watergirl test suite"
   >::: [
          (* Level *)
-         "tile_of_char known"        >:: test_tile_of_char;
-         "tile_of_char unknown"      >:: test_tile_of_char_unknown;
-         "from_string_list dims"     >:: test_dimensions;
-         "from_string_list widths"   >:: test_inconsistent_widths;
-         "get in bounds"             >:: test_get;
-         "get out of bounds = Wall"  >:: test_get_out_of_bounds;
-         "set in bounds"             >:: test_set;
-         "set out of bounds noop"    >:: test_set_out_of_bounds_is_noop;
-         "copy independence"         >:: test_copy;
-         "is_solid"                  >:: test_is_solid;
+         "tile_of_char known"           >:: test_tile_of_char;
+         "tile_of_char unknown"         >:: test_tile_of_char_unknown;
+         "from_string_list dims"        >:: test_dimensions;
+         "from_string_list widths"      >:: test_inconsistent_widths;
+         "from_string_list empty"       >:: test_from_empty_list;
+         "get in bounds"                >:: test_get;
+         "get out of bounds = Wall"     >:: test_get_out_of_bounds;
+         "set in bounds"                >:: test_set;
+         "set out of bounds noop"       >:: test_set_out_of_bounds_is_noop;
+         "copy independence"            >:: test_copy;
+         "is_solid"                     >:: test_is_solid;
          (* Sprite *)
-         "image_rows indexing"       >:: test_image_rows;
-         "scale_rgba identity"       >:: test_scale_rgba_identity;
-         "scale_rgba upscales"       >:: test_scale_rgba_upscale;
-         "scale_rgba zero size"      >:: test_scale_rgba_zero;
+         "image_rows indexing"          >:: test_image_rows;
+         "scale_rgba identity"          >:: test_scale_rgba_identity;
+         "scale_rgba upscales"          >:: test_scale_rgba_upscale;
+         "scale_rgba zero size"         >:: test_scale_rgba_zero;
+         "scale_rgba zero height"       >:: test_scale_rgba_zero_height;
+         "scale_rgba zero src width"    >:: test_scale_rgba_zero_src_width;
+         "scale_rgba zero src height"   >:: test_scale_rgba_zero_src_height;
+         "flip_rows_horizontally"       >:: test_flip_rows_horizontally;
+         (* Physics *)
+         "physics move right"           >:: test_physics_move_right;
+         "physics move left"            >:: test_physics_move_left;
+         "physics friction positive"    >:: test_physics_friction_positive;
+         "physics friction negative"    >:: test_physics_friction_negative;
+         "physics friction zero"        >:: test_physics_friction_zero;
+         "physics airborne keeps vx"    >:: test_physics_airborne_keeps_vx;
+         "physics jump"                 >:: test_physics_jump;
+         "physics right wall"           >:: test_physics_right_wall;
+         "physics left wall"            >:: test_physics_left_wall;
+         "physics floor landing"        >:: test_physics_floor_landing;
+         "physics ceiling hit"          >:: test_physics_ceiling_hit;
          (* Game *)
-         "init status Playing"       >:: test_init_status;
-         "init counters zero"        >:: test_init_zero_counters;
-         "init players alive"        >:: test_init_players_alive;
-         "init characters set"       >:: test_init_player_characters;
-         "Won is sticky"             >:: test_won_status_is_sticky;
-         "Won freezes elapsed"       >:: test_won_freezes_elapsed;
-         "Resetting counts down"     >:: test_resetting_counts_down;
-         "Resetting -> Playing"      >:: test_resetting_to_playing;
-         "Resetting clears elapsed"  >:: test_resetting_clears_elapsed;
-         "tick advances elapsed"     >:: test_tick_advances_elapsed;
-         "init copies the level"    >:: test_init_does_not_mutate_input;
+         "init status Playing"          >:: test_init_status;
+         "init counters zero"           >:: test_init_zero_counters;
+         "init players alive"           >:: test_init_players_alive;
+         "init characters set"          >:: test_init_player_characters;
+         "Won is sticky"                >:: test_won_status_is_sticky;
+         "Won freezes elapsed"          >:: test_won_freezes_elapsed;
+         "Resetting counts down"        >:: test_resetting_counts_down;
+         "Resetting -> Playing"         >:: test_resetting_to_playing;
+         "Resetting clears elapsed"     >:: test_resetting_clears_elapsed;
+         "tick advances elapsed"        >:: test_tick_advances_elapsed;
+         "init copies the level"        >:: test_init_does_not_mutate_input;
+         "check_death fb in water"      >:: test_check_death_fireboy_water;
+         "check_death wg in fire"       >:: test_check_death_watergirl_fire;
+         "check_death in acid"          >:: test_check_death_acid;
+         "check_death safe"             >:: test_check_death_safe;
+         "check_win true"               >:: test_check_win_true;
+         "check_win false"              >:: test_check_win_false;
+         "collect diamonds fireboy"     >:: test_collect_diamonds_fireboy;
+         "collect diamonds watergirl"   >:: test_collect_diamonds_watergirl;
+         "collect diamonds none"        >:: test_collect_diamonds_none;
+         "tile_to_pixel_center"         >:: test_tile_to_pixel_center;
+         "fireboy_spawn_of found"       >:: test_fireboy_spawn_of;
+         "fireboy_spawn_of no tile"     >:: test_fireboy_spawn_no_tile;
+         "fireboy_spawn_of two tiles"   >:: test_fireboy_spawn_two_tiles;
+         "spawn_fireboy fields"         >:: test_spawn_fireboy;
+         "spawn_watergirl fields"       >:: test_spawn_watergirl;
+         "tick player death"            >:: test_tick_player_death;
+         "tick watergirl death"         >:: test_tick_watergirl_death;
+         "tick win condition"           >:: test_tick_win_condition;
        ]
 
 let _ = run_test_tt_main tests

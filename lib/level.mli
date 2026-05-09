@@ -51,5 +51,10 @@ val tile_of_char : char -> tile
     Raises [Failure] on inconsistent widths or unknown characters. *)
 val from_string_list : string list -> t
 
-(** The first built-in level. *)
+(** [load_level path] reads a level from a plain-text file whose lines use
+    the tile character encoding. Raises [Sys_error] if the file is missing,
+    [Failure] on inconsistent row widths or unknown characters. *)
+val load_level : string -> t
+
+(** Level one, loaded from [data/level1.txt] at program start. *)
 val level_one : t

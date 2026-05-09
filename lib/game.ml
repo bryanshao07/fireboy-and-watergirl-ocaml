@@ -196,6 +196,8 @@ let tick (dt : float) (s : t) (fb_keys : Input.keys) (wg_keys : Input.keys) : t
           blue_gems;
         }
 
+[@@@coverage off]
+
 let render (s : t) : unit =
   let rp = Render.compute_render_params s.level in
   Render.draw_background rp s.level;

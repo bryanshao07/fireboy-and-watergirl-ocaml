@@ -57,6 +57,7 @@ let () =
     Graphics.synchronize ();
 
     if Input.is_held 'q' then running := false;
+    if Input.is_held 'r' then (scene := Intro; intro_timer := 0.);
 
     let frame_elapsed = Unix.gettimeofday () -. frame_start in
     if frame_elapsed < target_frame_time then

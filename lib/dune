@@ -1,6 +1,8 @@
 (library
  (name teamproject)
  (libraries graphics unix camlimages.core camlimages.png)
+ (instrumentation
+  (backend bisect_ppx))
  (foreign_stubs
   (language c)
   (names x11_input)

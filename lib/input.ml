@@ -12,9 +12,10 @@ type snapshot = {
   jump : bool;
   quit : bool;
   space : bool;
+  restart : bool;
 }
 
-let empty = { left = false; right = false; jump = false; quit = false; space = false }
+let empty = { left = false; right = false; jump = false; quit = false; space = false; restart = false }
 
 let current = ref empty
 let previous = ref empty
@@ -28,6 +29,7 @@ let sample () =
     jump = key_down 'i';
     quit = key_down 'q';
     space = key_down ' ';
+    restart = key_down 'r';
   }
 
 let sample_wg () =
@@ -37,6 +39,7 @@ let sample_wg () =
     jump = key_down 'w';
     quit = key_down 'q';
     space = key_down ' ';
+    restart = key_down 'r';
   }
 
 let drain () =
@@ -55,6 +58,7 @@ let is_held k =
   | 'i' -> !current.jump
   | 'q' -> !current.quit
   | ' ' -> !current.space
+  | 'r' -> !current.restart
   | _ -> false
 
 let poll_fireboy () =

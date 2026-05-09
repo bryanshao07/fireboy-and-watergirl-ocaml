@@ -26,8 +26,12 @@ let flip_rows_horizontally rows =
       Array.init w (fun x -> row.(w - 1 - x)))
     rows
 
+[@@@coverage off]
+
 let flip_image_horizontally img =
   Graphics.dump_image img |> flip_rows_horizontally |> Graphics.make_image
+
+[@@@coverage on]
 
 let scale_rgba img width height =
   if width = img.width && height = img.height then img
@@ -42,6 +46,8 @@ let scale_rgba img width height =
             let source_y = y * img.height / height in
             img.pixels.(source_y).(source_x));
     }
+
+[@@@coverage off]
 
 let scale_image img width height =
   let source = Graphics.dump_image img in

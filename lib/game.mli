@@ -22,6 +22,14 @@ type t = {
   blue_gems : int;
 }
 
+val tile_to_pixel_center : int -> int -> Level.t -> float * float
+val fireboy_spawn_of : Level.t -> float * float
+val spawn_fireboy : float * float -> Player.player
+val spawn_watergirl : float * float -> Player.player
+val check_death : Player.player -> Level.t -> Player.player
+val check_win : Player.player -> Player.player -> Level.t -> bool
+val collect_diamonds : Player.player -> Level.t -> int * int
+
 (** Fresh game on a copy of [lvl], with both players at their spawns. *)
 val init : Level.t -> t
 

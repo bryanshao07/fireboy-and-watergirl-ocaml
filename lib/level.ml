@@ -70,35 +70,15 @@ let from_string_list rows =
   in
   { grid; width; height }
 
-let level_one =
-  from_string_list
-    [
-      "############################";
-      "#                          #";
-      "#                          #";
-      "#                          #";
-      "#        R       B     E Q #";
-      "#       -------------------#";
-      "# B     #####              #";
-      "#----                      #";
-      "#####           -----      #";
-      "#####-----------#####-     #";
-      "#                       -  #";
-      "#      R           B       #";
-      "#     ---------------------#";
-      "#  -                  ######";
-      "#                          #";
-      "#------------              #";
-      "#            ---AA----     #";
-      "# 2             ##    -    #";
-      "#-------                   #";
-      "#                        --#";
-      "# 1        R       B    -###";
-      "#---------FFF-----WW----####";
-      "############################";
-    ]
+let load_level path =
+  let ic = open_in path in
+  let lines = ref [] in
+  (try
+     while true do
+       lines := input_line ic :: !lines
+     done
+   with End_of_file -> ());
+  close_in ic;
+  from_string_list (List.rev !lines)
 
-(* Levels # = wall/platform space = empty air F = fire hazard W = water hazard A
-   = acid/green hazard R = red/fire diamond B = blue/water diamond T =
-   button/switch 1 = Fireboy spawn 2 = Watergirl spawn E = Fireboy exit Q =
-   Watergirl exit *)
+let level_one = load_level "data/level1.txt"

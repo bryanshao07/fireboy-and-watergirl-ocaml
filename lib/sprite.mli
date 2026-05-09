@@ -24,6 +24,9 @@ type rgba_image = {
 (** Build an [h]-by-[w] 2D array by calling [pixel_at x y] for each cell. *)
 val image_rows : int -> int -> (int -> int -> 'a) -> 'a array array
 
+(** Mirror each row of a 2D array left-to-right. *)
+val flip_rows_horizontally : 'a array array -> 'a array array
+
 (** Mirror an image left-to-right. *)
 val flip_image_horizontally : Graphics.image -> Graphics.image
 
