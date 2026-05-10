@@ -19,7 +19,7 @@ title: "Fireboy & Watergirl"
 # OK if this is a Cornell Github link, but public gallery viewers won't be able to see it.
 git-repo: "https://github.com/aayanhussainw07/FireboyAndWatergirl-OCamlEdition"
 # Replace the URL with your own demo video.
-demo-video-url: "https://www.youtube.com/watch?v=ZIYiZ3dJ86U"
+demo-video-url: "https://www.youtube.com/watch?v=doHxtFW-JR0"
 # Write a short, attention-grabbing description of your project.
 desc: >
   An OCaml implementation of the online video game Fireboy and Watergirl. 
