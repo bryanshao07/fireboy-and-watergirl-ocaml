@@ -9,10 +9,7 @@ Watergirl dies in fire, and both die in acid.
 > Originally built as a CS 3110 (Functional Programming) final project.
 > [Demo video](https://www.youtube.com/watch?v=doHxtFW-JR0)
 
-<!-- Record a short gameplay GIF and drop it here — it's the highest-impact
-     thing you can add to this README:
 ![gameplay](docs/demo.gif)
--->
 
 ## Highlights
 
