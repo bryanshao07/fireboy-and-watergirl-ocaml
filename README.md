@@ -26,9 +26,11 @@ Watergirl dies in fire, and both die in acid.
   `lib/input.ml`). Jumps are edge-triggered (fire on key-down, not while held).
 - **Pure, tested core** — game state is modeled as an explicit
   `Playing | Resetting | Won` state machine updated by a pure `tick` function.
-  59 OUnit2 tests give **100% line coverage** on all game logic — collision,
+  65 OUnit2 tests give **100% line coverage** on all game logic — collision,
   win/loss detection, gem collection, and state transitions — measured with
-  `bisect_ppx`.
+  `bisect_ppx`, plus tests for the JSON level loader.
+- **Data-driven levels** — levels are JSON files (`levels/*.json`) loaded at
+  startup, authored with a standalone Python editor; see [Levels](#levels).
 
 ## Architecture
 
@@ -38,6 +40,7 @@ can be unit-tested without a display:
 | Module        | Responsibility                                                   |
 | ------------- | ---------------------------------------------------------------- |
 | `level`       | Tile grid: parsing, bounds-checked queries, copying (pure)       |
+| `level_loader`| Loads levels from JSON files into the tile grid (`yojson`)        |
 | `player`      | Player state record and character types (pure)                   |
 | `physics`     | Movement, gravity, and tile collision resolution (pure)          |
 | `game`        | Top-level state machine and `tick` update loop (pure)            |
@@ -47,6 +50,50 @@ can be unit-tested without a display:
 | `bin/main`    | The game loop wiring input → update → render together            |
 
 Every module has an `.mli` interface documenting its public API.
+
+## Levels
+
+Levels are **data-driven**: each level is a JSON file in `levels/`, loaded at
+startup by `level_loader` (which uses `yojson`) into the game's tile grid. The
+game plays them in order — beat one to advance to the next — as listed in
+`level_paths` in `bin/main.ml`.
+
+### JSON format
+
+```json
+{
+  "name": "Level 1",
+  "width": 28,
+  "height": 23,
+  "legend": { "#": "wall", "F": "fire_pool", "1": "spawn_fire" },
+  "grid": [ "############", "#1        F#" ]
+}
+```
+
+`grid` is an array of `height` strings, each exactly `width` characters; every
+character must appear as a single-character key in `legend`, mapped to one of
+the tile names: `empty`, `wall`, `platform`, `fire_pool`, `water_pool`, `acid`,
+`fire_door`, `water_door`, `gem_fire`, `gem_water`, `button`, `spawn_fire`,
+`spawn_water`.
+
+### Level editor (`tools/level_editor.py`)
+
+A standalone Python tool (standard library only — no `pip install`) for
+creating and editing levels. Two interactive modes plus headless helpers:
+
+```
+python3 tools/level_editor.py                  # tkinter GUI: click/drag to paint
+python3 tools/level_editor.py --text           # terminal (curses) editor, no GUI
+python3 tools/level_editor.py --show f.json    # print a level to stdout
+python3 tools/level_editor.py --new W H f.json # write a blank level
+```
+
+The **GUI** offers a color-coded tile palette and click/drag painting
+(right-click erases). The **`--text`** editor works in any terminal with no GUI
+toolkit — use it if tkinter is unavailable (some Anaconda Tk builds abort on
+recent macOS): arrow keys or `hjkl` to move, a tile key to paint, `space` to
+repaint the current brush, `x` to erase, and vim-style `:w` / `:q` / `:name` /
+`:new W H` commands.
 
 ## Controls
 
@@ -67,7 +114,7 @@ Every module has an `.mli` interface documenting its public API.
    - Log out and back in after installing
 2. Install the graphics and image libraries:
    ```
-   opam install graphics camlimages
+   opam install graphics camlimages yojson
    ```
 3. Build and run:
    ```
@@ -85,7 +132,7 @@ Every module has an `.mli` interface documenting its public API.
 2. Install the graphics and image libraries inside WSL:
    ```
    sudo apt install libx11-dev
-   opam install graphics camlimages
+   opam install graphics camlimages yojson
    ```
 3. Build and run:
    ```
