@@ -63,59 +63,25 @@ let scale_image img width height =
     |> Graphics.make_image
 
 let load_png path =
-  let img = Png.load path [] in
-  match img with
-  | Images.Rgba32 rgba ->
-      let w = rgba.Rgba32.width and h = rgba.Rgba32.height in
-      let arr =
-        image_rows w h (fun x y ->
-            let c = Rgba32.get rgba x y in
-            if c.Color.alpha < 128 then Graphics.transp
-            else
-              let rgb = c.Color.color in
-              Graphics.rgb rgb.Color.r rgb.Color.g rgb.Color.b)
-      in
-      Graphics.make_image arr
-  | Images.Rgb24 rgb ->
-      let w = rgb.Rgb24.width and h = rgb.Rgb24.height in
-      let arr =
-        image_rows w h (fun x y ->
-            let c = Rgb24.get rgb x y in
-            Graphics.rgb c.Color.r c.Color.g c.Color.b)
-      in
-      Graphics.make_image arr
-  | _ -> failwith "unsupported image format"
+  let img = ImageLib_unix.openfile path in
+  let w = img.Image.width and h = img.Image.height in
+  let arr =
+    image_rows w h (fun x y ->
+        Image.read_rgba img x y (fun r g b a ->
+            if a < 128 then Graphics.transp else Graphics.rgb r g b))
+  in
+  Graphics.make_image arr
 
 let load_png_rgba path =
-  let img = Png.load path [] in
-  match img with
-  | Images.Rgba32 rgba ->
-      let width = rgba.Rgba32.width and height = rgba.Rgba32.height in
-      {
-        width;
-        height;
-        pixels =
-          image_rows width height (fun x y ->
-              let c = Rgba32.get rgba x y in
-              let rgb = c.Color.color in
-              {
-                r = rgb.Color.r;
-                g = rgb.Color.g;
-                b = rgb.Color.b;
-                a = c.Color.alpha;
-              });
-      }
-  | Images.Rgb24 rgb ->
-      let width = rgb.Rgb24.width and height = rgb.Rgb24.height in
-      {
-        width;
-        height;
-        pixels =
-          image_rows width height (fun x y ->
-              let c = Rgb24.get rgb x y in
-              { r = c.Color.r; g = c.Color.g; b = c.Color.b; a = 255 });
-      }
-  | _ -> failwith "unsupported image format"
+  let img = ImageLib_unix.openfile path in
+  let width = img.Image.width and height = img.Image.height in
+  {
+    width;
+    height;
+    pixels =
+      image_rows width height (fun x y ->
+          Image.read_rgba img x y (fun r g b a -> { r; g; b; a }));
+  }
 
 let load_anim paths fps =
   { frames = Array.of_list (List.map load_png paths); frame_time = 1.0 /. fps }

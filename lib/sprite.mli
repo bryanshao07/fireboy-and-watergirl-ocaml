@@ -36,8 +36,7 @@ val scale_rgba : rgba_image -> int -> int -> rgba_image
 (** Nearest-neighbor scale to [w]-by-[h]. *)
 val scale_image : Graphics.image -> int -> int -> Graphics.image
 
-(** Load a PNG. Pixels with alpha < 128 become transparent.
-    Raises [Failure "unsupported image format"] for non-RGBA32/RGB24 PNGs. *)
+(** Load a PNG. Pixels with alpha < 128 become transparent. *)
 val load_png : string -> Graphics.image
 
 (** Load a PNG preserving alpha for later compositing. *)

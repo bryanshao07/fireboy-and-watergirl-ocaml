@@ -116,7 +116,7 @@ repaint the current brush, `x` to erase, and vim-style `:w` / `:q` / `:name` /
    - Log out and back in after installing
 2. Install the graphics and image libraries:
    ```
-   opam install graphics camlimages yojson
+   opam install graphics imagelib yojson
    ```
 3. Build and run:
    ```
@@ -134,7 +134,7 @@ repaint the current brush, `x` to erase, and vim-style `:w` / `:q` / `:name` /
 2. Install the graphics and image libraries inside WSL:
    ```
    sudo apt install libx11-dev
-   opam install graphics camlimages yojson
+   opam install graphics imagelib yojson
    ```
 3. Build and run:
    ```
