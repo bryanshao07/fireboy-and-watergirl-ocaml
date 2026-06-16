@@ -12,11 +12,14 @@ Reads and writes the JSON level format consumed by `lib/level_loader.ml`:
     }
 
 Usage:
-    python tools/level_editor.py [path.json]   # open the tkinter GUI
-    python tools/level_editor.py --show f.json # print a level to the terminal
-    python tools/level_editor.py --new W H out.json  # write a blank level
+    python tools/level_editor.py [path.json]        # open the tkinter GUI
+    python tools/level_editor.py --text [path.json] # terminal (curses) editor
+    python tools/level_editor.py --show f.json      # print a level to the terminal
+    python tools/level_editor.py --new W H out.json # write a blank level
 
-Only the Python standard library is used (json, argparse, tkinter).
+Only the Python standard library is used (json, argparse, tkinter, curses).
+The --text editor needs no GUI toolkit, so it works where tkinter is broken
+(e.g. an Anaconda Tk that aborts on recent macOS).
 """
 
 from __future__ import annotations
@@ -332,9 +335,169 @@ def run_gui(initial_path=None):
 
 
 # --------------------------------------------------------------------------
+# Terminal (curses) editor -- no GUI toolkit required
+# --------------------------------------------------------------------------
+def run_text(initial_path=None):
+    """A curses grid editor. Uses only the stdlib `curses` module."""
+    import curses
+
+    def editor(stdscr):
+        curses.curs_set(0)
+        stdscr.keypad(True)
+
+        if initial_path:
+            level = load_level(initial_path)
+            path = initial_path
+        else:
+            level = Level(28, 23, name="Untitled")
+            path = None
+
+        cx = cy = 0          # cursor cell
+        vx = vy = 0          # viewport top-left (for grids bigger than screen)
+        brush = "wall"
+        msg = "arrows/hjkl move  tile-key paints  space=brush  x=erase  :=command"
+
+        def prompt(prefix):
+            """Read a line at the bottom of the screen (Esc cancels)."""
+            curses.curs_set(1)
+            buf = ""
+            maxy, maxx = stdscr.getmaxyx()
+            while True:
+                stdscr.move(maxy - 1, 0)
+                stdscr.clrtoeol()
+                stdscr.addnstr(maxy - 1, 0, (prefix + buf)[: maxx - 1], maxx - 1)
+                ch = stdscr.get_wch()
+                if ch in ("\n", "\r"):
+                    curses.curs_set(0)
+                    return buf
+                if ch == "\x1b":  # Esc
+                    curses.curs_set(0)
+                    return None
+                if ch in ("\x7f", "\b") or ch == curses.KEY_BACKSPACE:
+                    buf = buf[:-1]
+                elif isinstance(ch, str) and ch.isprintable():
+                    buf += ch
+
+        def run_command(line):
+            """Execute a ':' command. Returns False to quit the editor."""
+            nonlocal path, level, msg, cx, cy, vx, vy
+            parts = line.split()
+            if not parts:
+                return True
+            cmd, rest = parts[0], parts[1:]
+            if cmd in ("w", "wq"):
+                target = rest[0] if rest else path
+                if not target:
+                    msg = "no filename: use ':w <path>'"
+                    return True
+                save_level(level, target)
+                path = target
+                msg = f"wrote {target}"
+                return cmd != "wq"
+            if cmd in ("q", "q!"):
+                return False
+            if cmd == "name":
+                level.name = " ".join(rest) or level.name
+                msg = f"name = {level.name}"
+            elif cmd == "new":
+                try:
+                    w, h = int(rest[0]), int(rest[1])
+                    level = Level(w, h, name=level.name)
+                    cx = cy = vx = vy = 0
+                    msg = f"new {w}x{h}"
+                except (IndexError, ValueError):
+                    msg = "usage: :new W H"
+            else:
+                msg = f"unknown command: {cmd}"
+            return True
+
+        def draw(s, y, x, text, attr=curses.A_NORMAL):
+            try:
+                stdscr.addnstr(y, x, text, max(0, len(text)), attr)
+            except curses.error:
+                pass
+
+        running = True
+        while running:
+            stdscr.erase()
+            maxy, maxx = stdscr.getmaxyx()
+            view_h = max(1, maxy - 3)
+            view_w = max(1, min(level.width, maxx - 1))
+
+            cx = max(0, min(cx, level.width - 1))
+            cy = max(0, min(cy, level.height - 1))
+            if cy < vy:
+                vy = cy
+            elif cy >= vy + view_h:
+                vy = cy - view_h + 1
+            if cx < vx:
+                vx = cx
+            elif cx >= vx + view_w:
+                vx = cx - view_w + 1
+
+            here = level.grid[cy][cx]
+            status = (
+                f" {level.name}  {level.width}x{level.height}  "
+                f"({cx},{cy})={here}  brush={brush} "
+            )
+            draw(stdscr, 0, 0, status.ljust(maxx - 1)[: maxx - 1], curses.A_REVERSE)
+
+            for sy in range(view_h):
+                gy = vy + sy
+                if gy >= level.height:
+                    break
+                for sx in range(view_w):
+                    gx = vx + sx
+                    if gx >= level.width:
+                        break
+                    char = CHAR_OF_NAME[level.grid[gy][gx]]
+                    disp = char if char != " " else "."
+                    attr = (
+                        curses.A_REVERSE
+                        if (gx == cx and gy == cy)
+                        else curses.A_NORMAL
+                    )
+                    draw(stdscr, 1 + sy, sx, disp, attr)
+
+            draw(stdscr, maxy - 2, 0, msg[: maxx - 1])
+            legend = "keys: " + "  ".join(
+                f"{c}={n}" for n, c, *_ in TILES if c != " "
+            )
+            draw(stdscr, maxy - 1, 0, legend[: maxx - 1])
+            stdscr.refresh()
+
+            ch = stdscr.get_wch()
+            if ch in (curses.KEY_UP, "k"):
+                cy -= 1
+            elif ch in (curses.KEY_DOWN, "j"):
+                cy += 1
+            elif ch in (curses.KEY_LEFT, "h"):
+                cx -= 1
+            elif ch in (curses.KEY_RIGHT, "l"):
+                cx += 1
+            elif ch == " ":
+                level.grid[cy][cx] = brush
+            elif ch == "x":
+                level.grid[cy][cx] = "empty"
+            elif ch == ":":
+                line = prompt(":")
+                if line is not None:
+                    running = run_command(line)
+            elif isinstance(ch, str) and ch in NAME_OF_CHAR and ch != " ":
+                brush = NAME_OF_CHAR[ch]
+                level.grid[cy][cx] = brush
+
+    curses.wrapper(editor)
+
+
+# --------------------------------------------------------------------------
 def main(argv=None):
     parser = argparse.ArgumentParser(description="Fireboy & Watergirl level editor")
-    parser.add_argument("path", nargs="?", help="JSON level to open in the GUI")
+    parser.add_argument("path", nargs="?", help="JSON level to open in an editor")
+    parser.add_argument(
+        "--text", action="store_true",
+        help="use the terminal (curses) editor instead of the tkinter GUI",
+    )
     parser.add_argument("--show", metavar="FILE", help="print a level and exit")
     parser.add_argument(
         "--new", nargs=3, metavar=("W", "H", "OUT"),
@@ -348,6 +511,13 @@ def main(argv=None):
     if args.new:
         w, h, out = args.new
         cmd_new(int(w), int(h), out)
+        return
+    if args.text:
+        try:
+            run_text(args.path)
+        except Exception as exc:  # not a real terminal / curses unavailable
+            print(f"terminal editor unavailable ({exc}).", file=sys.stderr)
+            sys.exit(1)
         return
     try:
         run_gui(args.path)
