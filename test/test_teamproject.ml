@@ -252,6 +252,105 @@ let test_loader_char_not_in_legend _ =
   assert_raises (Failure "grid character '?' is not defined in the legend")
     (fun () -> Level_loader.load_string json)
 
+(* [assert_fails_with ~prefix f] checks [f ()] raises [Failure msg] where
+   [msg] starts with [prefix]. Used where the tail of the message comes from
+   yojson and is not worth pinning exactly. *)
+let assert_fails_with ~prefix f =
+  try
+    ignore (f ());
+    assert_failure (Printf.sprintf "expected Failure starting with %S" prefix)
+  with Failure msg ->
+    let plen = String.length prefix in
+    assert_bool
+      (Printf.sprintf "message %S should start with %S" msg prefix)
+      (String.length msg >= plen && String.sub msg 0 plen = prefix)
+
+let test_loader_all_tile_names _ =
+  let cases =
+    [
+      ("empty", Level.Empty);
+      ("wall", Level.Wall);
+      ("platform", Level.Walltop);
+      ("fire_pool", Level.Fire);
+      ("water_pool", Level.Water);
+      ("acid", Level.Acid);
+      ("fire_door", Level.ExitFire);
+      ("water_door", Level.ExitWater);
+      ("gem_fire", Level.DiamondFire);
+      ("gem_water", Level.DiamondWater);
+      ("button", Level.Button);
+      ("spawn_fire", Level.SpawnFire);
+      ("spawn_water", Level.SpawnWater);
+    ]
+  in
+  List.iter
+    (fun (name, tile) ->
+      assert_equal ~printer:pp_tile tile (Level_loader.tile_of_name name))
+    cases
+
+let test_loader_multichar_legend_key _ =
+  let json =
+    {|{ "name":"x", "width":1, "height":1,
+        "legend": {"##":"wall"}, "grid": ["#"] }|}
+  in
+  assert_raises (Failure "Legend key \"##\" must be a single character")
+    (fun () -> Level_loader.load_string json)
+
+let test_loader_negative_dimensions _ =
+  let json = {|{ "name":"x", "width":-1, "height":0,
+        "legend": {}, "grid": [] }|} in
+  assert_raises (Failure "Level width and height must be non-negative")
+    (fun () -> Level_loader.load_string json)
+
+let test_loader_row_count_mismatch _ =
+  let json =
+    {|{ "name":"x", "width":1, "height":2,
+        "legend": {"#":"wall"}, "grid": ["#"] }|}
+  in
+  assert_raises (Failure "grid has 1 rows but height is 2") (fun () ->
+      Level_loader.load_string json)
+
+let test_loader_invalid_json _ =
+  assert_fails_with ~prefix:"invalid level JSON:" (fun () ->
+      Level_loader.load_string "{ this is not json")
+
+let test_loader_type_error _ =
+  (* width given as a string -> yojson Type_error, wrapped as Failure *)
+  let json =
+    {|{ "name":"x", "width":"3", "height":1,
+        "legend": {"#":"wall"}, "grid": ["###"] }|}
+  in
+  assert_fails_with ~prefix:"level JSON:" (fun () ->
+      Level_loader.load_string json)
+
+(* [count_tile lvl t] is the number of [t] tiles in [lvl]. *)
+let count_tile lvl t =
+  let n = ref 0 in
+  for y = 0 to Level.height lvl - 1 do
+    for x = 0 to Level.width lvl - 1 do
+      if Level.get lvl x y = t then incr n
+    done
+  done;
+  !n
+
+let test_loader_load_file_level1 _ =
+  let lvl = Level_loader.load_file "levels/level1.json" in
+  assert_equal ~printer:string_of_int 28 (Level.width lvl);
+  assert_equal ~printer:string_of_int 23 (Level.height lvl);
+  assert_equal ~printer:string_of_int 1 (count_tile lvl Level.SpawnFire);
+  assert_equal ~printer:string_of_int 1 (count_tile lvl Level.SpawnWater);
+  assert_equal ~printer:string_of_int 1 (count_tile lvl Level.ExitFire);
+  assert_equal ~printer:string_of_int 1 (count_tile lvl Level.ExitWater)
+
+let test_loader_load_file_level2 _ =
+  let lvl = Level_loader.load_file "levels/level2.json" in
+  assert_equal ~printer:string_of_int 22 (Level.width lvl);
+  assert_equal ~printer:string_of_int 30 (Level.height lvl);
+  assert_equal ~printer:string_of_int 1 (count_tile lvl Level.SpawnFire);
+  assert_equal ~printer:string_of_int 1 (count_tile lvl Level.SpawnWater);
+  assert_equal ~printer:string_of_int 1 (count_tile lvl Level.ExitFire);
+  assert_equal ~printer:string_of_int 1 (count_tile lvl Level.ExitWater)
+
 (* ====================================================================== *)
 (* Physics                                                                *)
 (* ====================================================================== *)
@@ -611,6 +710,14 @@ let tests =
          "loader unknown tile name" >:: test_loader_unknown_tile_name;
          "loader bad row width" >:: test_loader_bad_row_width;
          "loader char not in legend" >:: test_loader_char_not_in_legend;
+         "loader all tile names" >:: test_loader_all_tile_names;
+         "loader multichar legend key" >:: test_loader_multichar_legend_key;
+         "loader negative dimensions" >:: test_loader_negative_dimensions;
+         "loader row count mismatch" >:: test_loader_row_count_mismatch;
+         "loader invalid json" >:: test_loader_invalid_json;
+         "loader type error" >:: test_loader_type_error;
+         "loader load_file level1" >:: test_loader_load_file_level1;
+         "loader load_file level2" >:: test_loader_load_file_level2;
          "get in bounds" >:: test_get;
          "get out of bounds = Wall" >:: test_get_out_of_bounds;
          "set in bounds" >:: test_set;

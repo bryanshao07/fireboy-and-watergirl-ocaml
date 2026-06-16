@@ -3,7 +3,15 @@
   (target level1.txt)
   (action (copy ../../data/level1.txt level1.txt))))
 
+(subdir levels
+ (rule
+  (target level1.json)
+  (action (copy ../../levels/level1.json level1.json)))
+ (rule
+  (target level2.json)
+  (action (copy ../../levels/level2.json level2.json))))
+
 (test
  (name test_teamproject)
  (libraries ounit2 teamproject)
- (deps data/level1.txt))
+ (deps data/level1.txt levels/level1.json levels/level2.json))
