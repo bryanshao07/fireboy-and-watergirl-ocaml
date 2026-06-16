@@ -1,6 +1,7 @@
 open Player
-open Render
 open Input
+
+let tile_size = Level.tile_size
 
 let reference_fps = 60.0
 let gravity = 0.15 *. reference_fps *. reference_fps

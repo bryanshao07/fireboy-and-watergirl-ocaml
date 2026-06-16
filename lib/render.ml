@@ -3,7 +3,7 @@
 open Player
 open Level
 
-let tile_size = 30
+let tile_size = Level.tile_size
 
 type render_params = {
   rts : int;
@@ -490,15 +490,3 @@ let draw_win (time : float) (red_gems : int) (blue_gems : int) =
    with _ -> ());
   Graphics.set_color (Graphics.rgb 115 105 75);
   draw_centered cx 45 "Q  to quit"
-
-let draw_vignette () : unit =
-  let w = Graphics.size_x () in
-  let h = Graphics.size_y () in
-  let overlay = Sprite.scale_rgba (Lazy.force vignette) w h in
-  let screen = Graphics.get_image 0 0 w h |> Graphics.dump_image in
-  let blended =
-    Sprite.image_rows w h (fun x y ->
-        blend_pixel screen.(y).(x) overlay.pixels.(y).(x))
-    |> Graphics.make_image
-  in
-  Graphics.draw_image blended 0 0

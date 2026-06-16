@@ -23,6 +23,10 @@ type t = {
   height : int;
 }
 
+(** Side length of one tile, in world pixels. The single source of truth for
+    this constant, shared by physics, game logic, and rendering. *)
+val tile_size : int
+
 (** Number of columns. *)
 val width : t -> int
 

@@ -1,6 +1,7 @@
 (** All on-screen drawing: HUD, intro, win screen, level tiles, and players. *)
 
-(** Source-art tile size in pixels. Also used by [Physics] for collision. *)
+(** Source-art tile size in pixels. Re-exported from [Level.tile_size], which
+    is the single source of truth for this constant. *)
 val tile_size : int
 
 (** How to project the world onto the window: [rts] is the rendered tile size,

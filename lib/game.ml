@@ -1,6 +1,6 @@
 open Player
 
-let tile_size = 30
+let tile_size = Level.tile_size
 let reset_delay = 0.5
 
 type status =

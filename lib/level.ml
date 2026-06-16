@@ -19,6 +19,7 @@ type t = {
   height : int;
 }
 
+let tile_size = 30
 let width lvl = lvl.width
 let height lvl = lvl.height
 
