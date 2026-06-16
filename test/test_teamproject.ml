@@ -203,6 +203,56 @@ let test_from_empty_list _ =
   assert_equal ~printer:string_of_int 0 (Level.height lvl)
 
 (* ====================================================================== *)
+(* Level_loader (JSON)                                                    *)
+(* ====================================================================== *)
+
+let sample_json =
+  {|{
+    "name": "Test",
+    "width": 3,
+    "height": 2,
+    "legend": { " ": "empty", "#": "wall", "1": "spawn_fire", "F": "fire_pool" },
+    "grid": [ "###", "#1F" ]
+  }|}
+
+let test_loader_dimensions _ =
+  let lvl = Level_loader.load_string sample_json in
+  assert_equal ~printer:string_of_int 3 (Level.width lvl);
+  assert_equal ~printer:string_of_int 2 (Level.height lvl)
+
+let test_loader_tiles _ =
+  let lvl = Level_loader.load_string sample_json in
+  assert_equal ~printer:pp_tile Level.Wall (Level.get lvl 0 0);
+  assert_equal ~printer:pp_tile Level.SpawnFire (Level.get lvl 1 1);
+  assert_equal ~printer:pp_tile Level.Fire (Level.get lvl 2 1)
+
+let test_loader_tile_of_name _ =
+  assert_equal ~printer:pp_tile Level.Walltop
+    (Level_loader.tile_of_name "platform");
+  assert_equal ~printer:pp_tile Level.ExitWater
+    (Level_loader.tile_of_name "water_door")
+
+let test_loader_unknown_tile_name _ =
+  assert_raises (Failure "Unknown tile name \"lava\" in legend") (fun () ->
+      Level_loader.tile_of_name "lava")
+
+let test_loader_bad_row_width _ =
+  let json =
+    {|{ "name":"x", "width":3, "height":1,
+        "legend": {"#":"wall"}, "grid": ["##"] }|}
+  in
+  assert_raises (Failure "grid row \"##\" has length 2 but width is 3")
+    (fun () -> Level_loader.load_string json)
+
+let test_loader_char_not_in_legend _ =
+  let json =
+    {|{ "name":"x", "width":2, "height":1,
+        "legend": {"#":"wall"}, "grid": ["#?"] }|}
+  in
+  assert_raises (Failure "grid character '?' is not defined in the legend")
+    (fun () -> Level_loader.load_string json)
+
+(* ====================================================================== *)
 (* Physics                                                                *)
 (* ====================================================================== *)
 
@@ -554,6 +604,13 @@ let tests =
          "from_string_list dims" >:: test_dimensions;
          "from_string_list widths" >:: test_inconsistent_widths;
          "from_string_list empty" >:: test_from_empty_list;
+         (* Level_loader *)
+         "loader dimensions" >:: test_loader_dimensions;
+         "loader tiles" >:: test_loader_tiles;
+         "loader tile_of_name" >:: test_loader_tile_of_name;
+         "loader unknown tile name" >:: test_loader_unknown_tile_name;
+         "loader bad row width" >:: test_loader_bad_row_width;
+         "loader char not in legend" >:: test_loader_char_not_in_legend;
          "get in bounds" >:: test_get;
          "get out of bounds = Wall" >:: test_get_out_of_bounds;
          "set in bounds" >:: test_set;

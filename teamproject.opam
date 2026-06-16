@@ -14,6 +14,7 @@ depends: [
   "ocaml"
   "graphics"
   "camlimages"
+  "yojson"
   "odoc" {with-doc}
 ]
 build: [

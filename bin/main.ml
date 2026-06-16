@@ -9,6 +9,8 @@ let () =
   let target_frame_time = 1. /. 60. in
   let max_dt = 1. /. 20. in
 
+  let level1 = Level_loader.load_file "levels/level1.json" in
+
   Graphics.open_graph " 1200x700";
   Graphics.set_window_title "Fireboy & Watergirl";
   Graphics.auto_synchronize false;
@@ -29,10 +31,10 @@ let () =
     (match !scene with
     | Intro ->
         intro_timer := !intro_timer +. dt;
-        Render.draw_intro Level.level_one !intro_timer;
+        Render.draw_intro level1 !intro_timer;
         if Input.confirm_just_pressed () then begin
           intro_timer := 0.0;
-          scene := InGame (Game.init Level.level_one)
+          scene := InGame (Game.init level1)
         end
     | InGame game ->
         let fb_keys = Input.poll_fireboy () in
@@ -52,7 +54,7 @@ let () =
     | Win { time; red_gems; blue_gems } ->
         Render.draw_win time red_gems blue_gems;
         if Input.confirm_just_pressed () then
-          scene := InGame (Game.init Level.level_one));
+          scene := InGame (Game.init level1));
 
     Graphics.synchronize ();
 
