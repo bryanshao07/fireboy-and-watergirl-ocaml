@@ -1,6 +1,6 @@
 (library
  (name teamproject)
- (libraries graphics unix camlimages.core camlimages.png yojson)
+ (libraries graphics unix imagelib imagelib.unix yojson)
  (instrumentation
   (backend bisect_ppx))
  (foreign_stubs

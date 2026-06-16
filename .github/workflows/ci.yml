@@ -19,11 +19,12 @@ jobs:
         with:
           ocaml-compiler: "5.0"
 
-      # Installs the project's declared dependencies (graphics, camlimages,
+      # Installs the project's declared dependencies (graphics, imagelib,
       # yojson) plus test deps (ounit2) along with their system packages via
-      # opam's depext. The `graphics` package pulls in libx11-dev, which also
-      # provides the <X11/Xlib.h> header that lib/x11_input.c needs to compile
-      # headlessly.
+      # opam's depext. imagelib is pure OCaml (no C image-codec stubs), so the
+      # build no longer depends on system libpng/libfreetype. The `graphics`
+      # package pulls in libx11-dev, which also provides the <X11/Xlib.h> header
+      # that lib/x11_input.c needs to compile headlessly.
       - name: Install dependencies
         run: opam install . --deps-only --with-test
 

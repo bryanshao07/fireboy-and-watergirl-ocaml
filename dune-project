@@ -22,7 +22,7 @@
  (depends
   ocaml
   graphics
-  camlimages
+  imagelib
   yojson
   (ounit2 :with-test))
  (tags
