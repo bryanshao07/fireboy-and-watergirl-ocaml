@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up OCaml 5.0
+        uses: ocaml/setup-ocaml@v3
+        with:
+          ocaml-compiler: "5.0"
+
+      # Installs the project's declared dependencies (graphics, camlimages,
+      # yojson) along with their system packages via opam's depext. The
+      # `graphics` package pulls in libx11-dev, which also provides the
+      # <X11/Xlib.h> header that lib/x11_input.c needs to compile headlessly.
+      - name: Install dependencies
+        run: opam install . --deps-only --with-test
+
+      # ounit2 is used by the test suite but is not declared in the opam file,
+      # so install it explicitly. (See note in the PR description / README.)
+      - name: Install test dependencies
+        run: opam install ounit2
+
+      - name: Build
+        run: opam exec -- dune build
+
+      - name: Run tests
+        run: opam exec -- dune test

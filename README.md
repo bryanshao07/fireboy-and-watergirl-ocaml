@@ -1,5 +1,7 @@
 # Fireboy & Watergirl — OCaml Edition
 
+[![CI](https://github.com/bryanshao07/fireboy-and-watergirl-ocaml/actions/workflows/ci.yml/badge.svg)](https://github.com/bryanshao07/fireboy-and-watergirl-ocaml/actions/workflows/ci.yml)
+
 A two-player co-op puzzle-platformer built from scratch in OCaml, rendering
 through the X11 `Graphics` library. Two players each control one character —
 Fireboy and Watergirl — and must cooperate to collect gems and reach their
