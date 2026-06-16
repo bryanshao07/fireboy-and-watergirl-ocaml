@@ -19,7 +19,12 @@
  (name teamproject)
  (synopsis "A short synopsis")
  (description "A longer description")
- (depends ocaml graphics camlimages yojson)
+ (depends
+  ocaml
+  graphics
+  camlimages
+  yojson
+  (ounit2 :with-test))
  (tags
   ("add topics" "to describe" your project)))
 

@@ -15,6 +15,7 @@ depends: [
   "graphics"
   "camlimages"
   "yojson"
+  "ounit2" {with-test}
   "odoc" {with-doc}
 ]
 build: [
